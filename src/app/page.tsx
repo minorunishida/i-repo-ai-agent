@@ -248,7 +248,7 @@ export default function Home() {
           {/* Header */}
           <div className="flex items-center justify-between mb-6 animate-fade-in">
             <h1 className="text-3xl sm:text-4xl font-display font-bold gradient-text">
-              i-Repo
+              i-Repo AI Assistant
             </h1>
             <button
               onClick={toggleDarkMode}
@@ -380,7 +380,7 @@ export default function Home() {
           <div className="text-center text-sm text-gray-500 dark:text-gray-400 mt-6 animate-fade-in">
             <div className="flex items-center justify-center gap-2">
               <div className="w-2 h-2 bg-primary-500 rounded-full animate-pulse-slow"></div>
-              <span>i-Repo Agent Service</span>
+              <span>CIMTOPS AI ENGINE</span>
               <div className="w-2 h-2 bg-accent-500 rounded-full animate-pulse-slow" style={{ animationDelay: '1s' }}></div>
             </div>
           </div>
