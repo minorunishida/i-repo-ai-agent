@@ -73,6 +73,8 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    console.log('API Route called');
+    
     // 環境変数のチェック
     const missingVars: string[] = [];
     if (!PROJECT_ENDPOINT) missingVars.push('AZURE_PROJECT_ENDPOINT');
@@ -81,7 +83,17 @@ export async function POST(req: Request) {
     if (!TENANT_ID) missingVars.push('AZURE_TENANT_ID');
     if (!CLIENT_SECRET) missingVars.push('AZURE_CLIENT_SECRET');
     
+    console.log('Environment variables check:', {
+      PROJECT_ENDPOINT: !!PROJECT_ENDPOINT,
+      AGENT_ID: !!AGENT_ID,
+      CLIENT_ID: !!CLIENT_ID,
+      TENANT_ID: !!TENANT_ID,
+      CLIENT_SECRET: !!CLIENT_SECRET,
+      missingVars
+    });
+    
     if (missingVars.length > 0) {
+      console.error('Missing environment variables:', missingVars);
       return new Response(
         JSON.stringify({ 
           error: 'Environment variables not configured',
@@ -96,7 +108,14 @@ export async function POST(req: Request) {
     let body;
     try {
       body = await req.json();
+      console.log('Request body received:', {
+        hasMessages: !!body.messages,
+        messageCount: body.messages?.length || 0,
+        hasThreadId: !!body.threadId,
+        threadId: body.threadId
+      });
     } catch (error) {
+      console.error('Failed to parse request body:', error);
       return new Response(
         JSON.stringify({ error: 'Invalid request body', details: String(error) }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
@@ -104,28 +123,96 @@ export async function POST(req: Request) {
     }
 
     const { messages } = body;
+    let { threadId } = body;
     
     if (!messages || !Array.isArray(messages)) {
+      console.error('Invalid messages array:', { messages });
       return new Response(
         JSON.stringify({ error: 'Messages array is required' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
+    console.log('Getting access token...');
     const token = await getAccessToken();
+    console.log('Access token obtained successfully');
 
     // Azure Agent Serviceからストリーミングレスポンスを取得
-    const url = `${PROJECT_ENDPOINT}/threads/runs?api-version=v1`;
-    const requestBody = {
-      assistant_id: AGENT_ID,
-      stream: true,
-      thread: { 
-        messages: messages.map((m: any) => ({
-          role: m.role === 'user' ? 'user' : 'assistant',
-          content: [{ type: 'text', text: m.content }],
-        }))
-      },
-    };
+    let url: string;
+    let requestBody: any;
+
+    if (threadId) {
+      console.log('Using existing thread:', threadId);
+      // 既存スレッドにメッセージを追加してRunを開始
+      const addMessageUrl = `${PROJECT_ENDPOINT}/threads/${threadId}/messages?api-version=v1`;
+      const addMessageBody = {
+        role: 'user',
+        content: [{ type: 'text', text: messages[messages.length - 1]?.content || '' }],
+      };
+
+      console.log('Adding message to thread:', {
+        url: addMessageUrl,
+        body: addMessageBody
+      });
+
+      // メッセージを追加
+      const addMessageRes = await fetch(addMessageUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(addMessageBody),
+      });
+
+      if (!addMessageRes.ok) {
+        const errorText = await addMessageRes.text();
+        console.error('Failed to add message to thread:', {
+          status: addMessageRes.status,
+          statusText: addMessageRes.statusText,
+          error: errorText
+        });
+        
+        // スレッドが存在しない場合は、新規スレッドを作成
+        if (addMessageRes.status === 404) {
+          console.log('Thread not found, creating new thread instead');
+          threadId = null; // 新規スレッド作成にフォールバック
+        } else {
+          throw new Error(`Failed to add message to thread: ${addMessageRes.status} - ${errorText}`);
+        }
+      } else {
+        console.log('Message added to thread successfully');
+      }
+    }
+    
+    if (!threadId) {
+      console.log('Creating new thread');
+      // 新規スレッドを作成してRunを開始
+      url = `${PROJECT_ENDPOINT}/threads/runs?api-version=v1`;
+      requestBody = {
+        assistant_id: AGENT_ID,
+        stream: true,
+        thread: { 
+          messages: messages.map((m: any) => ({
+            role: m.role === 'user' ? 'user' : 'assistant',
+            content: [{ type: 'text', text: m.content }],
+          }))
+        },
+      };
+    } else {
+      // Runを開始
+      url = `${PROJECT_ENDPOINT}/threads/${threadId}/runs?api-version=v1`;
+      requestBody = {
+        assistant_id: AGENT_ID,
+        stream: true,
+      };
+    }
+
+    console.log('Making request to Azure Agent Service:', {
+      url,
+      hasRequestBody: !!requestBody,
+      stream: requestBody.stream
+    });
 
     const res = await fetch(url, {
       method: 'POST',
@@ -138,18 +225,36 @@ export async function POST(req: Request) {
       signal: req.signal,
     });
 
+    console.log('Azure Agent Service response:', {
+      status: res.status,
+      statusText: res.statusText,
+      hasBody: !!res.body,
+      headers: Object.fromEntries(res.headers.entries())
+    });
+
     if (!res.ok || !res.body) {
       const t = await res.text().catch(() => '');
+      console.error('Agent stream failed:', {
+        status: res.status,
+        statusText: res.statusText,
+        error: t
+      });
       throw new Error(`Agent stream failed: ${res.status} ${t}`);
     }
 
     // Azure SSEをAI SDKのストリーム形式に変換
     const encoder = new TextEncoder();
+    let azureThreadId: string | null = null;
+    
     const stream = new ReadableStream({
       async start(controller) {
         try {
           await pumpSse(res.body!, ({ event, data }) => {
             if (data === '[DONE]') {
+              // スレッドIDをログに出力（デバッグ用）
+              if (azureThreadId && !threadId) {
+                console.log('Azure thread ID created:', azureThreadId);
+              }
               controller.enqueue(encoder.encode(formatStreamPart('finish_message', { finishReason: 'stop' })));
               controller.close();
               return;
@@ -160,6 +265,12 @@ export async function POST(req: Request) {
             try {
               const obj = JSON.parse(data);
               const ev = event ?? obj?.type ?? obj?.event ?? '';
+
+              // スレッドIDを取得（新規作成の場合）
+              if (!threadId && (obj?.thread_id || obj?.data?.thread_id)) {
+                azureThreadId = obj?.thread_id || obj?.data?.thread_id;
+                console.log('Azure thread ID received:', azureThreadId);
+              }
 
               if (typeof ev === 'string' && ev.includes('message.delta')) {
                 const contentBlocks =
@@ -184,6 +295,10 @@ export async function POST(req: Request) {
 
               // 完了イベントが明示で来る場合
               if (typeof ev === 'string' && ev.includes('message.completed')) {
+                // スレッドIDをログに出力（デバッグ用）
+                if (azureThreadId && !threadId) {
+                  console.log('Azure thread ID created:', azureThreadId);
+                }
                 controller.enqueue(encoder.encode(formatStreamPart('finish_message', { finishReason: 'stop' })));
                 controller.close();
               }
@@ -197,17 +312,32 @@ export async function POST(req: Request) {
       },
     });
 
+    const responseHeaders: HeadersInit = {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    };
+
+    // 新規スレッド作成の場合は、スレッドIDをヘッダーに含める
+    if (!threadId) {
+      // ストリーム開始時にスレッドIDを取得するためのフラグ
+      responseHeaders['x-thread-creation'] = 'true';
+    }
+
     return new Response(stream, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-      },
+      headers: responseHeaders,
     });
   } catch (error) {
-    console.error('API Error:', error);
+    console.error('API Error:', {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : undefined
+    });
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ 
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : String(error)
+      }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
