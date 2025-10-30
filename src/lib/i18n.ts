@@ -44,6 +44,12 @@ const ja: Dict = {
   cancel: 'キャンセル',
   delete: '削除',
   messagesUnit: '件',
+  openLinks: '関連リンクを開く',
+  linkKnowledgeBase: 'i-Reporterナレッジベース',
+  linkSupportWeb: 'サポートウェブ',
+  linkKaizenClub: '現場帳票カイゼン部',
+  linkHomepage: 'i-Reporter ホームページ',
+  linkTechSupportForm: 'テクニカルサポート受付フォーム',
 };
 
 const en: Dict = {
@@ -72,6 +78,12 @@ const en: Dict = {
   cancel: 'Cancel',
   delete: 'Delete',
   messagesUnit: 'msgs',
+  openLinks: 'Open related links',
+  linkKnowledgeBase: 'i-Reporter Knowledge Base',
+  linkSupportWeb: 'Support Web',
+  linkKaizenClub: 'Genba Form Kaizen Club',
+  linkHomepage: 'i-Reporter Homepage',
+  linkTechSupportForm: 'Technical Support Request Form',
 };
 
 const zhHans: Dict = {
@@ -100,6 +112,12 @@ const zhHans: Dict = {
   cancel: '取消',
   delete: '删除',
   messagesUnit: '条',
+  openLinks: '打开相关链接',
+  linkKnowledgeBase: 'i-Reporter 知识库',
+  linkSupportWeb: '支持网站',
+  linkKaizenClub: '现场表单改善部',
+  linkHomepage: 'i-Reporter 首页',
+  linkTechSupportForm: '技术支持申请表',
 };
 
 const zhHant: Dict = {
@@ -128,6 +146,12 @@ const zhHant: Dict = {
   cancel: '取消',
   delete: '刪除',
   messagesUnit: '則',
+  openLinks: '開啟相關連結',
+  linkKnowledgeBase: 'i-Reporter 知識庫',
+  linkSupportWeb: '支援網站',
+  linkKaizenClub: '現場表單改善部',
+  linkHomepage: 'i-Reporter 首頁',
+  linkTechSupportForm: '技術支援申請表單',
 };
 
 const th: Dict = {
@@ -156,6 +180,12 @@ const th: Dict = {
   cancel: 'ยกเลิก',
   delete: 'ลบ',
   messagesUnit: 'ข้อความ',
+  openLinks: 'เปิดลิงก์ที่เกี่ยวข้อง',
+  linkKnowledgeBase: 'ฐานความรู้ i-Reporter',
+  linkSupportWeb: 'เว็บไซต์สนับสนุน',
+  linkKaizenClub: 'ชมรมปรับปรุงแบบฟอร์มหน้างาน',
+  linkHomepage: 'โฮมเพจ i-Reporter',
+  linkTechSupportForm: 'แบบฟอร์มติดต่อฝ่ายสนับสนุนเทคนิค',
 };
 
 export const translations: Record<AppLanguage, Dict> = {

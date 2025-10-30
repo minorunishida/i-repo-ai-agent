@@ -6,6 +6,7 @@ import ThreadSidebar from '@/components/ThreadSidebar';
 import FloatingIrepochan from '@/components/FloatingIrepochan';
 import { threadManager, Thread } from '@/lib/threadStorage';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
+import ResourceLinks from '@/components/ResourceLinks';
 import { AppLanguage, getSavedLanguage, saveLanguage, t } from '@/lib/i18n';
 
 export default function Home() {
@@ -274,6 +275,7 @@ export default function Home() {
               {t(language, 'appTitle')}
             </h1>
             <div className="flex items-center gap-2">
+              <ResourceLinks language={language} />
               <LanguageSwitcher value={language} onChange={handleLanguageChange} />
               <button
                 onClick={toggleDarkMode}
