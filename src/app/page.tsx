@@ -2,6 +2,7 @@
 
 import { useChat } from 'ai/react';
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import ThreadSidebar from '@/components/ThreadSidebar';
 import FloatingIrepochan from '@/components/FloatingIrepochan';
 import { threadManager, Thread } from '@/lib/threadStorage';
@@ -15,6 +16,9 @@ export default function Home() {
   const [language, setLanguage] = useState<AppLanguage>('ja');
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [agentId, setAgentId] = useState<string | null>(null);
+  const [agents, setAgents] = useState<Array<{ agentId: string; name: string; index: number }>>([]);
+  const pathname = usePathname();
+  const router = useRouter();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [currentThread, setCurrentThread] = useState<Thread | null>(null);
   const lastSavedMessageCount = useRef<number>(0);
@@ -79,6 +83,43 @@ export default function Home() {
       document.documentElement.classList.remove('dark');
     }
   }, []);
+
+  // エージェント一覧の取得（URL同期用）
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/admin/agents', { cache: 'no-store' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (!cancelled) setAgents(data.agents || []);
+      } catch (e) {
+        // 失敗時は agents 空のまま（デフォルト処理にフォールバック）
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // URL → UI 同期（/agent/{index} または / → index 1）
+  useEffect(() => {
+    if (!agents || agents.length === 0) return;
+    const parseIndexFromPath = (p: string | null): number => {
+      if (!p || p === '/') return 1;
+      const parts = p.split('/').filter(Boolean);
+      if (parts.length >= 2 && parts[0] === 'agent') {
+        const n = parseInt(parts[1], 10);
+        return Number.isFinite(n) && n >= 1 ? n : 1;
+      }
+      return 1;
+    };
+    const idx = parseIndexFromPath(pathname);
+    const target = agents.find(a => a.index === idx) || agents.find(a => a.index === 1) || agents[0];
+    if (!target) return;
+    if (agentId !== target.agentId) {
+      setAgentId(target.agentId);
+      saveAgentId(target.agentId);
+    }
+  }, [pathname, agents]);
 
   // 言語変更時に <html lang> を更新
   useEffect(() => {
@@ -280,7 +321,19 @@ export default function Home() {
               {t(language, 'appTitle')}
             </h1>
             <div className="flex items-center gap-2">
-              <AgentPicker language={language} value={agentId} onChange={setAgentId} />
+              <AgentPicker
+                language={language}
+                value={agentId}
+                onChange={(nextId) => {
+                  setAgentId(nextId);
+                  saveAgentId(nextId);
+                  const entry = agents.find(a => a.agentId === nextId);
+                  const nextIndex = entry?.index || 1;
+                  const nextPath = `/agent/${nextIndex}`;
+                  // 遷移によるリロードは避け、履歴差し替えで同期
+                  router.replace(nextPath);
+                }}
+              />
               <LanguageSwitcher value={language} onChange={handleLanguageChange} />
 
               <button
