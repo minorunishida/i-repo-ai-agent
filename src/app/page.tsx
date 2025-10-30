@@ -248,7 +248,7 @@ export default function Home() {
           {/* Header */}
           <div className="flex items-center justify-between mb-6 animate-fade-in">
             <h1 className="text-3xl sm:text-4xl font-display font-bold gradient-text">
-              i-Repo AI AGENT SERVICE
+              i-Repo AI AGENT
             </h1>
             <button
               onClick={toggleDarkMode}
