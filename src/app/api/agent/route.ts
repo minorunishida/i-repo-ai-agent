@@ -122,8 +122,28 @@ export async function POST(req: Request) {
       );
     }
 
-    const { messages } = body;
+    const { messages, preferredLanguage } = body;
     let { threadId } = body;
+
+    const languageInstruction = (lang?: string): string | null => {
+      const l = String(lang || '').trim();
+      if (!l) return null;
+      switch (l) {
+        case 'ja':
+          return '以後の回答は必ず日本語で返答してください。説明やコードコメントも日本語で統一してください。';
+        case 'en':
+          return 'From now on, respond strictly in English. Keep all explanations and code comments in English.';
+        case 'zh-Hans':
+          return '接下来请务必使用简体中文回答。包括说明与代码注释也请统一为简体中文。';
+        case 'zh-Hant':
+          return '接下來請務必使用繁體中文回答。包含說明與程式碼註解也請統一為繁體中文。';
+        case 'th':
+          return 'ต่อไปนี้กรุณาตอบเป็นภาษาไทยเท่านั้น รวมถึงคำอธิบายและคำอธิบายในโค้ดด้วย';
+        default:
+          return null;
+      }
+    };
+    const langHint = languageInstruction(preferredLanguage);
     
     if (!messages || !Array.isArray(messages)) {
       console.error('Invalid messages array:', { messages });
@@ -183,6 +203,26 @@ export async function POST(req: Request) {
       } else {
         console.log('Message added to thread successfully');
       }
+
+      // 言語リマインドを必要に応じて追加
+      if (langHint) {
+        try {
+          await fetch(addMessageUrl, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              role: 'user',
+              content: [{ type: 'text', text: langHint }],
+            }),
+          });
+          console.log('Language hint appended to existing thread');
+        } catch (e) {
+          console.warn('Failed to append language hint:', e);
+        }
+      }
     }
     
     if (!threadId) {
@@ -192,11 +232,16 @@ export async function POST(req: Request) {
       requestBody = {
         assistant_id: AGENT_ID,
         stream: true,
-        thread: { 
-          messages: messages.map((m: any) => ({
-            role: m.role === 'user' ? 'user' : 'assistant',
-            content: [{ type: 'text', text: m.content }],
-          }))
+        thread: {
+          messages: [
+            ...(langHint
+              ? [{ role: 'user', content: [{ type: 'text', text: langHint }] }]
+              : []),
+            ...messages.map((m: any) => ({
+              role: m.role === 'user' ? 'user' : 'assistant',
+              content: [{ type: 'text', text: m.content }],
+            })),
+          ],
         },
       };
     } else {

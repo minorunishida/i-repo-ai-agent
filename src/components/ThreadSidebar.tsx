@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { threadManager, Thread } from '@/lib/threadStorage';
+import { AppLanguage, t } from '@/lib/i18n';
 
 interface ThreadSidebarProps {
   activeThreadId: string | null;
@@ -9,6 +10,7 @@ interface ThreadSidebarProps {
   onNewThread: () => void;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
+  language?: AppLanguage;
 }
 
 export default function ThreadSidebar({
@@ -17,6 +19,7 @@ export default function ThreadSidebar({
   onNewThread,
   isCollapsed,
   onToggleCollapse,
+  language = 'ja',
 }: ThreadSidebarProps) {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -52,20 +55,26 @@ export default function ThreadSidebar({
     const date = new Date(timestamp);
     const now = new Date();
     const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+    const locale =
+      language === 'en' ? 'en-US'
+      : language === 'zh-Hans' ? 'zh-CN'
+      : language === 'zh-Hant' ? 'zh-TW'
+      : language === 'th' ? 'th-TH'
+      : 'ja-JP';
     
     if (diffInHours < 24) {
-      return date.toLocaleTimeString('ja-JP', { 
+      return date.toLocaleTimeString(locale, { 
         hour: '2-digit', 
         minute: '2-digit' 
       });
     } else if (diffInHours < 168) { // 1週間以内
-      return date.toLocaleDateString('ja-JP', { 
+      return date.toLocaleDateString(locale, { 
         weekday: 'short',
         hour: '2-digit', 
         minute: '2-digit' 
       });
     } else {
-      return date.toLocaleDateString('ja-JP', { 
+      return date.toLocaleDateString(locale, { 
         month: 'short', 
         day: 'numeric' 
       });
@@ -78,7 +87,7 @@ export default function ThreadSidebar({
         <button
           onClick={onToggleCollapse}
           className="p-3 rounded-xl glass-card hover:scale-105 transition-all duration-200 mb-4"
-          aria-label="スレッド一覧を表示"
+          aria-label={t(language, 'showThreads')}
         >
           <svg className="w-6 h-6 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -87,7 +96,7 @@ export default function ThreadSidebar({
         <button
           onClick={onNewThread}
           className="p-3 rounded-xl glass-card hover:scale-105 transition-all duration-200 bg-honest-500/20 hover:bg-honest-500/30"
-          aria-label="新しいスレッドを作成"
+          aria-label={t(language, 'createNewThread')}
         >
           <svg className="w-6 h-6 text-honest-600 dark:text-honest-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -103,12 +112,12 @@ export default function ThreadSidebar({
       <div className="p-4 border-b border-white/20 dark:border-gray-700/20">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
-            会話履歴
+            {t(language, 'sidebarTitle')}
           </h2>
           <button
             onClick={onToggleCollapse}
             className="p-2 rounded-lg hover:bg-white/10 dark:hover:bg-gray-800/50 transition-colors"
-            aria-label="サイドバーを閉じる"
+            aria-label={t(language, 'closeSidebar')}
           >
             <svg className="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -124,14 +133,14 @@ export default function ThreadSidebar({
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
-          新しい会話
+          {t(language, 'newConversation')}
         </button>
 
         {/* 検索ボックス */}
         <div className="relative">
           <input
             type="text"
-            placeholder="会話を検索..."
+            placeholder={t(language, 'searchConversationsPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full input-modern pl-10 focus:ring-honest-500"
@@ -146,7 +155,7 @@ export default function ThreadSidebar({
       <div className="flex-1 overflow-y-auto scrollbar-thin">
         {filteredThreads.length === 0 ? (
           <div className="p-4 text-center text-gray-500 dark:text-gray-400">
-            {searchQuery ? '検索結果が見つかりません' : '会話履歴がありません'}
+            {searchQuery ? t(language, 'noResults') : t(language, 'noHistory')}
           </div>
         ) : (
           <div className="p-2">
@@ -173,7 +182,7 @@ export default function ThreadSidebar({
                         {formatDate(thread.updatedAt)}
                       </span>
                       <span className="text-xs text-gray-500 dark:text-gray-500">
-                        {thread.messages.length}件
+                        {thread.messages.length}{t(language, 'messagesUnit')}
                       </span>
                     </div>
                   </div>
@@ -185,7 +194,7 @@ export default function ThreadSidebar({
                       setShowDeleteConfirm(thread.id);
                     }}
                     className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-red-500/20 transition-all duration-200"
-                    aria-label="スレッドを削除"
+                    aria-label={t(language, 'deleteThread')}
                   >
                     <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -203,23 +212,23 @@ export default function ThreadSidebar({
         <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-sm mx-4">
             <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
-              会話を削除
+              {t(language, 'deleteTitle')}
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              この会話を削除しますか？この操作は元に戻せません。
+              {t(language, 'deleteConfirm')}
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowDeleteConfirm(null)}
                 className="flex-1 btn-secondary"
               >
-                キャンセル
+                {t(language, 'cancel')}
               </button>
               <button
                 onClick={() => handleDeleteThread(showDeleteConfirm)}
                 className="flex-1 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-colors"
               >
-                削除
+                {t(language, 'delete')}
               </button>
             </div>
           </div>

@@ -5,9 +5,12 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import ThreadSidebar from '@/components/ThreadSidebar';
 import FloatingIrepochan from '@/components/FloatingIrepochan';
 import { threadManager, Thread } from '@/lib/threadStorage';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
+import { AppLanguage, getSavedLanguage, saveLanguage, t } from '@/lib/i18n';
 
 export default function Home() {
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [language, setLanguage] = useState<AppLanguage>('ja');
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [currentThread, setCurrentThread] = useState<Thread | null>(null);
@@ -18,6 +21,7 @@ export default function Home() {
       api: '/api/agent',
       body: {
         threadId: activeThreadId,
+        preferredLanguage: language,
       },
       onFinish: (message) => {
         // ストリーミング完了後にメッセージを保存
@@ -50,8 +54,14 @@ export default function Home() {
       },
     });
 
-  // Dark mode toggle
+  // 言語・ダークモード初期化
   useEffect(() => {
+    const savedLang = getSavedLanguage();
+    setLanguage(savedLang);
+    if (typeof document !== 'undefined') {
+      document.documentElement.lang = savedLang;
+    }
+
     const savedTheme = localStorage.getItem('theme');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const shouldBeDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
@@ -63,6 +73,13 @@ export default function Home() {
       document.documentElement.classList.remove('dark');
     }
   }, []);
+
+  // 言語変更時に <html lang> を更新
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.lang = language;
+    }
+  }, [language]);
 
   // スレッド管理の初期化
   useEffect(() => {
@@ -147,6 +164,11 @@ export default function Home() {
     } else {
       document.documentElement.classList.remove('dark');
     }
+  };
+
+  const handleLanguageChange = (lang: AppLanguage) => {
+    saveLanguage(lang);
+    setLanguage(lang);
   };
 
   const handleNewThread = useCallback(() => {
@@ -241,6 +263,7 @@ export default function Home() {
           onNewThread={handleNewThread}
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={handleToggleSidebar}
+          language={language}
         />
         
         {/* メインコンテンツ */}
@@ -248,13 +271,16 @@ export default function Home() {
           {/* Header */}
           <div className="flex items-center justify-between mb-6 animate-fade-in">
             <h1 className="text-3xl sm:text-4xl font-display font-bold gradient-text">
-              i-Repo AI AGENT
+              {t(language, 'appTitle')}
             </h1>
-            <button
-              onClick={toggleDarkMode}
-              className="p-3 rounded-xl glass-card hover:scale-105 transition-all duration-200"
-              aria-label="Toggle dark mode"
-            >
+            <div className="flex items-center gap-2">
+              <LanguageSwitcher value={language} onChange={handleLanguageChange} />
+              <button
+                onClick={toggleDarkMode}
+                className="p-3 rounded-xl glass-card hover:scale-105 transition-all duration-200"
+                aria-label={t(language, 'toggleDark')}
+                title={t(language, 'toggleDark')}
+              >
             {isDarkMode ? (
               <svg className="w-6 h-6 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
@@ -264,7 +290,8 @@ export default function Home() {
                 <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
               </svg>
             )}
-            </button>
+              </button>
+            </div>
           </div>
           
           {/* Chat Container */}
@@ -280,10 +307,10 @@ export default function Home() {
                     </svg>
                     </div>
                     <p className="text-lg text-gray-600 dark:text-gray-400 font-medium">
-                      メッセージを入力してチャットを開始してください
+                      {t(language, 'emptyPromptLead')}
                     </p>
                     <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">
-                      AIアシスタントがお手伝いします
+                      {t(language, 'emptyPromptSub')}
                     </p>
                   </div>
                 </div>
@@ -312,7 +339,7 @@ export default function Home() {
                         <div></div>
                         <div></div>
                       </div>
-                      <span className="text-sm font-medium">アイれぽちゃんAIが考えています...</span>
+                      <span className="text-sm font-medium">{t(language, 'thinking')}</span>
                     </div>
                   </div>
                 </div>
@@ -338,7 +365,7 @@ export default function Home() {
                   type="text"
                   value={input}
                   onChange={handleInputChange}
-                  placeholder="メッセージを入力..."
+                  placeholder={t(language, 'inputPlaceholder')}
                   className="input-modern pr-12"
                   disabled={isLoading}
                 />
@@ -357,10 +384,10 @@ export default function Home() {
                   {isLoading ? (
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span>送信中</span>
+                      <span>{t(language, 'sending')}</span>
                     </div>
                   ) : (
-                    '送信'
+                    t(language, 'send')
                   )}
                 </button>
                 {isLoading && (
@@ -369,7 +396,7 @@ export default function Home() {
                     onClick={stop}
                     className="btn-secondary"
                   >
-                    停止
+                    {t(language, 'stop')}
                   </button>
                 )}
               </div>
@@ -380,7 +407,7 @@ export default function Home() {
           <div className="text-center text-sm text-gray-500 dark:text-gray-400 mt-6 animate-fade-in">
             <div className="flex items-center justify-center gap-2">
               <div className="w-2 h-2 bg-primary-500 rounded-full animate-pulse-slow"></div>
-              <span>CIMTOPS AI ENGINE</span>
+              <span>{t(language, 'footerBrand')}</span>
               <div className="w-2 h-2 bg-accent-500 rounded-full animate-pulse-slow" style={{ animationDelay: '1s' }}></div>
             </div>
           </div>

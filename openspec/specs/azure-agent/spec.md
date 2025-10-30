@@ -51,3 +51,15 @@ Azure AI Foundry Agent ServiceとVercel AI SDKを統合し、リアルタイム�
 #### Scenario: Request validation
 - **WHEN** 不正なリクエストが送信される
 - **THEN** 適切なエラーメッセージとHTTPステータスコードを返す
+
+### Requirement: Preferred Language Propagation to Agent
+システムはユーザーが選択した言語をAPIに送信し、エージェント応答がその言語で返るようにしなければならない（SHALL）。
+
+#### Scenario: New thread language instruction
+- **WHEN** クライアントが新規スレッドを作成してRunを開始する
+- **THEN** リクエストには `preferredLanguage` が含まれ
+- **AND** サーバはその言語で回答するよう先頭に言語指示メッセージを注入する
+
+#### Scenario: Existing thread language instruction
+- **WHEN** 既存スレッドでRunを開始する
+- **THEN** サーバはRun前に言語リマインドのメッセージを追加する
