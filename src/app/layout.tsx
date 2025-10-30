@@ -5,8 +5,8 @@ import { Inter } from 'next/font/google'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'AI SDK Chat',
-  description: 'Azure Agent Service integration with Vercel AI SDK',
+  title: 'i-Repo AI AGENT SERVICE',
+  description: 'CIMTOPS AI ENGINE',
 }
 
 export default function RootLayout({
