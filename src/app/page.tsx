@@ -1,8 +1,9 @@
 'use client';
 
 import { useChat } from 'ai/react';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import ThreadSidebar from '@/components/ThreadSidebar';
+import FloatingIrepochan from '@/components/FloatingIrepochan';
 import { threadManager, Thread } from '@/lib/threadStorage';
 
 export default function Home() {
@@ -126,6 +127,14 @@ export default function Home() {
           lastSavedMessageCount.current = messages.length;
         }
       }
+    } else if (activeThreadId && messages.length === 0) {
+      // メッセージが空の場合、lastSavedMessageCountをリセット
+      console.log('Messages cleared, resetting lastSavedMessageCount:', {
+        activeThreadId,
+        lastSavedCount: lastSavedMessageCount.current,
+        currentMessagesCount: messages.length
+      });
+      lastSavedMessageCount.current = 0;
     }
   }, [messages.length, activeThreadId]);
 
@@ -140,7 +149,7 @@ export default function Home() {
     }
   };
 
-  const handleNewThread = () => {
+  const handleNewThread = useCallback(() => {
     // 現在のメッセージを保存（もしあれば）
     if (activeThreadId && messages.length > 0) {
       const thread = threadManager.getActiveThread();
@@ -161,9 +170,14 @@ export default function Home() {
     setCurrentThread(newThread);
     setMessages([]);
     lastSavedMessageCount.current = 0;
-  };
+    
+    console.log('New thread created:', {
+      threadId: newThread.id,
+      lastSavedMessageCount: lastSavedMessageCount.current
+    });
+  }, [activeThreadId, messages]);
 
-  const handleThreadSelect = (threadId: string) => {
+  const handleThreadSelect = useCallback((threadId: string) => {
     // 現在のメッセージを保存（もしあれば）
     if (activeThreadId && messages.length > 0) {
       const currentThread = threadManager.getActiveThread();
@@ -208,7 +222,7 @@ export default function Home() {
         console.log('Messages set:', threadMessages);
       }
     }
-  };
+  }, [activeThreadId, messages]);
 
   const handleToggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
@@ -216,6 +230,9 @@ export default function Home() {
 
   return (
     <div className="min-h-screen gradient-bg p-4 sm:p-6">
+      {/* アイレポちゃんの浮遊アニメーション */}
+      <FloatingIrepochan isResponding={isLoading} />
+      
       <div className="max-w-6xl mx-auto h-[80vh] flex">
         {/* スレッドサイドバー */}
         <ThreadSidebar

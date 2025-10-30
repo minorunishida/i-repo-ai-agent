@@ -8,7 +8,20 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Modern color palette
+        // Honest Orange color palette
+        honest: {
+          50: '#fff7ed',
+          100: '#ffedd5',
+          200: '#fed7aa',
+          300: '#fdba74',
+          400: '#fb923c',
+          500: '#FF9500', // Honest Orange
+          600: '#E6850A', // Dark Orange
+          700: '#c2410c',
+          800: '#9a3412',
+          900: '#7c2d12',
+        },
+        // Modern color palette (kept for compatibility)
         primary: {
           50: '#f0f9ff',
           100: '#e0f2fe',
@@ -76,6 +89,9 @@ module.exports = {
         'slide-down': 'slideDown 0.3s ease-out',
         'scale-in': 'scaleIn 0.2s ease-out',
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'float': 'float 3s ease-in-out infinite',
+        'float-active': 'floatActive 2s ease-in-out infinite',
+        'bounce-gentle': 'bounceGentle 2s ease-in-out infinite',
       },
       keyframes: {
         fadeIn: {
@@ -93,6 +109,20 @@ module.exports = {
         scaleIn: {
           '0%': { transform: 'scale(0.95)', opacity: '0' },
           '100%': { transform: 'scale(1)', opacity: '1' },
+        },
+        float: {
+          '0%, 100%': { transform: 'translateY(0px) rotate(0deg)' },
+          '50%': { transform: 'translateY(-10px) rotate(1deg)' },
+        },
+        floatActive: {
+          '0%, 100%': { transform: 'translateY(0px) rotate(0deg) scale(1)' },
+          '25%': { transform: 'translateY(-8px) rotate(-1deg) scale(1.02)' },
+          '50%': { transform: 'translateY(-15px) rotate(1deg) scale(1.05)' },
+          '75%': { transform: 'translateY(-8px) rotate(-1deg) scale(1.02)' },
+        },
+        bounceGentle: {
+          '0%, 100%': { transform: 'translateY(0px)' },
+          '50%': { transform: 'translateY(-5px)' },
         },
       },
       boxShadow: {

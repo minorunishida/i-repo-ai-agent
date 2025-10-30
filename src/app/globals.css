@@ -57,15 +57,19 @@
   }
   
   .gradient-bg {
-    @apply bg-gradient-to-br from-primary-50 via-white to-accent-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900;
+    @apply bg-gradient-to-br from-honest-50 via-white to-honest-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900;
   }
   
   .gradient-text {
-    @apply bg-gradient-to-r from-primary-600 to-accent-600 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-honest-600 to-honest-500 bg-clip-text text-transparent;
+  }
+  
+  .gradient-bg-honest {
+    @apply bg-gradient-to-br from-honest-50 via-white to-honest-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900;
   }
   
   .btn-primary {
-    @apply bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white font-medium px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 active:scale-95;
+    @apply bg-gradient-to-r from-honest-500 to-honest-600 hover:from-honest-600 hover:to-honest-700 text-white font-medium px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 active:scale-95;
   }
   
   .btn-secondary {
@@ -73,11 +77,11 @@
   }
   
   .input-modern {
-    @apply w-full px-4 py-3 bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200 placeholder-gray-500 dark:placeholder-gray-400;
+    @apply w-full px-4 py-3 bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-honest-500 focus:border-transparent transition-all duration-200 placeholder-gray-500 dark:placeholder-gray-400;
   }
   
   .message-user {
-    @apply bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-2xl rounded-br-md px-4 py-3 shadow-lg;
+    @apply bg-gradient-to-r from-honest-500 to-honest-600 text-white rounded-2xl rounded-br-md px-4 py-3 shadow-lg;
   }
   
   .message-assistant {
@@ -109,7 +113,7 @@ html {
 
 /* Focus styles for accessibility */
 *:focus-visible {
-  @apply outline-none ring-2 ring-primary-500 ring-offset-2 ring-offset-white dark:ring-offset-gray-900;
+  @apply outline-none ring-2 ring-honest-500 ring-offset-2 ring-offset-white dark:ring-offset-gray-900;
 }
 
 /* Reduced motion support */

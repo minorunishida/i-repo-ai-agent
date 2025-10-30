@@ -86,10 +86,10 @@ export default function ThreadSidebar({
         </button>
         <button
           onClick={onNewThread}
-          className="p-3 rounded-xl glass-card hover:scale-105 transition-all duration-200"
+          className="p-3 rounded-xl glass-card hover:scale-105 transition-all duration-200 bg-honest-500/20 hover:bg-honest-500/30"
           aria-label="新しいスレッドを作成"
         >
-          <svg className="w-6 h-6 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-6 h-6 text-honest-600 dark:text-honest-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
         </button>
@@ -119,7 +119,7 @@ export default function ThreadSidebar({
         {/* 新規スレッドボタン */}
         <button
           onClick={onNewThread}
-          className="w-full btn-primary flex items-center justify-center gap-2 mb-4"
+          className="w-full btn-primary flex items-center justify-center gap-2 mb-4 bg-gradient-to-r from-honest-500 to-honest-600 hover:from-honest-600 hover:to-honest-700"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -134,7 +134,7 @@ export default function ThreadSidebar({
             placeholder="会話を検索..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full input-modern pl-10"
+            className="w-full input-modern pl-10 focus:ring-honest-500"
           />
           <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -155,7 +155,7 @@ export default function ThreadSidebar({
                 key={thread.id}
                 className={`group relative p-3 rounded-xl mb-2 cursor-pointer transition-all duration-200 ${
                   activeThreadId === thread.id
-                    ? 'bg-primary-500/20 border border-primary-500/30'
+                    ? 'bg-honest-500/20 border border-honest-500/30'
                     : 'hover:bg-white/10 dark:hover:bg-gray-800/50'
                 }`}
                 onClick={() => onThreadSelect(thread.id)}
