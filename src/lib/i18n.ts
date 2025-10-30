@@ -22,7 +22,7 @@ const ja: Dict = {
   appTitle: 'i-Repo AI AGENT',
   emptyPromptLead: 'メッセージを入力してチャットを開始してください',
   emptyPromptSub: 'AIアシスタントがお手伝いします',
-  thinking: 'アイれぽちゃんAIが考えています...',
+  thinking: 'アイレポちゃんが考えています...',
   inputPlaceholder: 'メッセージを入力...',
   send: '送信',
   sending: '送信中',
