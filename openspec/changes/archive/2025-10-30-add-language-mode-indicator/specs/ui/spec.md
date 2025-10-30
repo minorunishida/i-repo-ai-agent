@@ -19,4 +19,3 @@ UI SHALL display the currently selected language as a visible mode indicator nea
 - **WHEN** using a screen reader
 - **THEN** the language control exposes an aria-label/title including the current language
 
-
