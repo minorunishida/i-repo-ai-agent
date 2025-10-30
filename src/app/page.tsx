@@ -6,6 +6,7 @@ import ThreadSidebar from '@/components/ThreadSidebar';
 import FloatingIrepochan from '@/components/FloatingIrepochan';
 import { threadManager, Thread } from '@/lib/threadStorage';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
+import AgentPicker, { getSavedAgentId, saveAgentId } from '@/components/AgentPicker';
 import ResourceLinks from '@/components/ResourceLinks';
 import { AppLanguage, getSavedLanguage, saveLanguage, t } from '@/lib/i18n';
 
@@ -13,6 +14,7 @@ export default function Home() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [language, setLanguage] = useState<AppLanguage>('ja');
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
+  const [agentId, setAgentId] = useState<string | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [currentThread, setCurrentThread] = useState<Thread | null>(null);
   const lastSavedMessageCount = useRef<number>(0);
@@ -23,6 +25,7 @@ export default function Home() {
       body: {
         threadId: activeThreadId,
         preferredLanguage: language,
+        agentId: agentId || undefined,
       },
       onFinish: (message) => {
         // ストリーミング完了後にメッセージを保存
@@ -59,6 +62,8 @@ export default function Home() {
   useEffect(() => {
     const savedLang = getSavedLanguage();
     setLanguage(savedLang);
+    const savedAgent = getSavedAgentId();
+    setAgentId(savedAgent);
     if (typeof document !== 'undefined') {
       document.documentElement.lang = savedLang;
     }
@@ -275,9 +280,12 @@ export default function Home() {
               {t(language, 'appTitle')}
             </h1>
             <div className="flex items-center gap-2">
+              <AgentPicker language={language} value={agentId} onChange={setAgentId} />
+              <LanguageSwitcher value={language} onChange={handleLanguageChange} />
+
               <button
                 onClick={toggleDarkMode}
-                className="p-3 rounded-xl glass-card hover:scale-105 transition-all duration-200"
+                className="p-3 h-10 w-10 leading-none rounded-xl glass-card hover:scale-105 transition-all duration-200 flex items-center justify-center"
                 aria-label={t(language, 'toggleDark')}
                 title={t(language, 'toggleDark')}
               >
@@ -291,15 +299,8 @@ export default function Home() {
               </svg>
             )}
               </button>
+
               <ResourceLinks language={language} />
-              <LanguageSwitcher value={language} onChange={handleLanguageChange} />
-              <span
-                className="px-2 py-1 text-xs rounded-md glass-card text-gray-700 dark:text-gray-200"
-                aria-label={`${t(language, 'currentLanguage')}: ${t(language, 'languageModeLabel')}`}
-                title={`${t(language, 'currentLanguage')}: ${t(language, 'languageModeLabel')}`}
-              >
-                {t(language, 'languageModeLabel')}
-              </span>
             </div>
           </div>
           

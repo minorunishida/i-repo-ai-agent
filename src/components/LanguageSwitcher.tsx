@@ -45,13 +45,13 @@ export default function LanguageSwitcher({ value, onChange }: Props) {
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="p-3 rounded-xl glass-card hover:scale-105 transition-all duration-200"
-        aria-label={`${t(lang, 'toggleLanguage')} (${t(lang, 'languageModeLabel')})`}
-        title={`${t(lang, 'toggleLanguage')} (${t(lang, 'languageModeLabel')})`}
+        className="p-3 h-10 leading-none rounded-xl glass-card hover:scale-105 transition-all duration-200 text-sm text-gray-700 dark:text-gray-200 flex items-center gap-2"
+        aria-label={`${t(lang, 'toggleLanguage')} (${label})`}
+        title={`${t(lang, 'toggleLanguage')} (${label})`}
       >
-        {/* Language icon */}
-        <svg className="w-6 h-6 text-gray-700 dark:text-gray-300" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-          <path d="M12 3a9 9 0 100 18 9 9 0 000-18zm7 9a7 7 0 01-2.05 4.95 9.04 9.04 0 00-2.3-3.45c.2-.48.36-.98.47-1.5H19zm-3.52-2a7.97 7.97 0 00-.91-2.07A6.99 6.99 0 0119 11h-3.52zM12 5c.8 0 1.57.12 2.29.35-.43.74-.96 1.6-1.58 2.48-.22.03-.45.05-.71.05-.26 0-.49-.02-.71-.05A19.7 19.7 0 019.71 5.35 6.96 6.96 0 0112 5zM8.43 7.93A7.97 7.97 0 007.52 10H5a7 7 0 013.43-2.07zM5 13h2.52c.11.52.27 1.02.47 1.5-.9.98-1.7 2.16-2.3 3.45A7 7 0 015 13zm3.71 5.65c.62-.89 1.15-1.74 1.58-2.48.22-.03.45-.05.71-.05.26 0 .49.02.71.05.62.88 1.15 1.74 1.58 2.48A6.96 6.96 0 0112 19a6.96 6.96 0 01-2.29-.35zM13.3 12c-.12.43-.28.84-.48 1.23-.26.5-.56.98-.9 1.43-.34-.45-.64-.93-.9-1.43-.2-.39-.36-.8-.48-1.23h2.76zM8.48 12c.1-.52.26-1.02.47-1.5.26-.49.56-.97.9-1.42.34.45.64.93.9 1.42.21.48.37.98.47 1.5H8.48z" />
+        <span>{label}</span>
+        <svg className="w-4 h-4 opacity-70" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+          <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" />
         </svg>
       </button>
       {open && (

@@ -1,5 +1,6 @@
 // app/api/agent/route.ts
 import { ConfidentialClientApplication } from '@azure/msal-node';
+import { appendFile } from 'node:fs/promises';
 import { formatStreamPart } from 'ai';
 
 export const runtime = 'nodejs';   // SSE プロキシは Node 実行を推奨
@@ -7,12 +8,13 @@ export const maxDuration = 60;
 
 const PROJECT_ENDPOINT = process.env.AZURE_PROJECT_ENDPOINT;
 const AGENT_ID = process.env.AZURE_AGENT_ID;
+const AGENT_NAME = process.env.AZURE_AGENT_ID_NAME;
 const CLIENT_ID = process.env.AZURE_CLIENT_ID;
 const TENANT_ID = process.env.AZURE_TENANT_ID;
 const CLIENT_SECRET = process.env.AZURE_CLIENT_SECRET;
 
 // 環境変数のチェック
-if (!PROJECT_ENDPOINT || !AGENT_ID || !CLIENT_ID || !TENANT_ID || !CLIENT_SECRET) {
+if (!PROJECT_ENDPOINT || !CLIENT_ID || !TENANT_ID || !CLIENT_SECRET) {
   console.error('Missing required environment variables');
 }
 
@@ -78,7 +80,6 @@ export async function POST(req: Request) {
     // 環境変数のチェック
     const missingVars: string[] = [];
     if (!PROJECT_ENDPOINT) missingVars.push('AZURE_PROJECT_ENDPOINT');
-    if (!AGENT_ID) missingVars.push('AZURE_AGENT_ID');
     if (!CLIENT_ID) missingVars.push('AZURE_CLIENT_ID');
     if (!TENANT_ID) missingVars.push('AZURE_TENANT_ID');
     if (!CLIENT_SECRET) missingVars.push('AZURE_CLIENT_SECRET');
@@ -123,7 +124,55 @@ export async function POST(req: Request) {
     }
 
     const { messages, preferredLanguage } = body;
+    const requestedAgentId: string | undefined = body.agentId;
     let { threadId } = body;
+
+    // 環境変数から複数Agentを自動検出
+    type AgentEntry = { agentId: string; name: string; assistantId: string; index: number };
+    const registry: AgentEntry[] = [];
+    const pushIfValid = (idx: number) => {
+      const idKey = idx === 1 ? 'AZURE_AGENT_ID' : `AZURE_AGENT_ID${idx}`;
+      const nameKey = idx === 1 ? 'AZURE_AGENT_ID_NAME' : `AZURE_AGENT_ID${idx}_NAME`;
+      const assistantId = process.env[idKey as keyof NodeJS.ProcessEnv];
+      const name = process.env[nameKey as keyof NodeJS.ProcessEnv];
+      if (assistantId && name) {
+        const agentId = idx === 1 ? 'default' : `agent${idx}`;
+        registry.push({ agentId, name, assistantId, index: idx });
+      }
+    };
+    // 1..20 程度までスキャン（必要なら拡張）
+    for (let i = 1; i <= 20; i++) pushIfValid(i);
+    // デフォルト解決
+    const defaultAgent = registry.find((e) => e.index === 1) || registry[0];
+    if (!defaultAgent) {
+      console.error('No valid agent entries found in environment variables');
+      return new Response(
+        JSON.stringify({ 
+          error: 'No agent configured',
+          hint: 'Set AZURE_AGENT_ID and AZURE_AGENT_ID_NAME at least'
+        }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+    // リクエストで指定されたagentIdの解決（allow-list）
+    const resolved = requestedAgentId
+      ? registry.find((e) => e.agentId === requestedAgentId)
+      : defaultAgent;
+    if (requestedAgentId && !resolved) {
+      console.warn('Unknown agentId requested:', requestedAgentId);
+      return new Response(
+        JSON.stringify({ error: 'Unknown agentId', agentId: requestedAgentId }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+    const active = resolved!;
+    console.log('Using agent:', { agentId: active.agentId, name: active.name, assistantId: active.assistantId });
+    const auditPath = process.env.AGENT_AUDIT_PATH;
+    const reqId = crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`;
+    if (auditPath) {
+      const line = `${new Date().toISOString()}\t${reqId}\t${active.agentId}\t${active.name}\n`;
+      appendFile(auditPath, line).catch((e) => console.warn('Audit append failed:', e));
+    }
 
     const languageInstruction = (lang?: string): string | null => {
       const l = String(lang || '').trim();
@@ -230,7 +279,7 @@ export async function POST(req: Request) {
       // 新規スレッドを作成してRunを開始
       url = `${PROJECT_ENDPOINT}/threads/runs?api-version=v1`;
       requestBody = {
-        assistant_id: AGENT_ID,
+        assistant_id: active.assistantId,
         stream: true,
         thread: {
           messages: [
@@ -248,7 +297,7 @@ export async function POST(req: Request) {
       // Runを開始
       url = `${PROJECT_ENDPOINT}/threads/${threadId}/runs?api-version=v1`;
       requestBody = {
-        assistant_id: AGENT_ID,
+        assistant_id: active.assistantId,
         stream: true,
       };
     }
@@ -297,9 +346,7 @@ export async function POST(req: Request) {
           await pumpSse(res.body!, ({ event, data }) => {
             if (data === '[DONE]') {
               // スレッドIDをログに出力（デバッグ用）
-              if (azureThreadId && !threadId) {
-                console.log('Azure thread ID created:', azureThreadId);
-              }
+              if (azureThreadId && !threadId) console.log('Azure thread ID created:', azureThreadId);
               controller.enqueue(encoder.encode(formatStreamPart('finish_message', { finishReason: 'stop' })));
               controller.close();
               return;
@@ -361,6 +408,8 @@ export async function POST(req: Request) {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
       'Connection': 'keep-alive',
+      'x-agent-id': active.agentId,
+      'x-agent-name': encodeURIComponent(active.name),
     };
 
     // 新規スレッド作成の場合は、スレッドIDをヘッダーに含める

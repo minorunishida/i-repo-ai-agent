@@ -38,7 +38,7 @@ export default function ResourceLinks({
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="p-3 rounded-xl glass-card hover:scale-105 transition-all duration-200"
+        className="p-3 h-10 w-10 leading-none rounded-xl glass-card hover:scale-105 transition-all duration-200 flex items-center justify-center"
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={t(language, 'openLinks')}
