@@ -275,8 +275,6 @@ export default function Home() {
               {t(language, 'appTitle')}
             </h1>
             <div className="flex items-center gap-2">
-              <ResourceLinks language={language} />
-              <LanguageSwitcher value={language} onChange={handleLanguageChange} />
               <button
                 onClick={toggleDarkMode}
                 className="p-3 rounded-xl glass-card hover:scale-105 transition-all duration-200"
@@ -293,6 +291,15 @@ export default function Home() {
               </svg>
             )}
               </button>
+              <ResourceLinks language={language} />
+              <LanguageSwitcher value={language} onChange={handleLanguageChange} />
+              <span
+                className="px-2 py-1 text-xs rounded-md glass-card text-gray-700 dark:text-gray-200"
+                aria-label={`${t(language, 'currentLanguage')}: ${t(language, 'languageModeLabel')}`}
+                title={`${t(language, 'currentLanguage')}: ${t(language, 'languageModeLabel')}`}
+              >
+                {t(language, 'languageModeLabel')}
+              </span>
             </div>
           </div>
           

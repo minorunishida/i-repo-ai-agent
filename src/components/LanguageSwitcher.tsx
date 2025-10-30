@@ -46,8 +46,8 @@ export default function LanguageSwitcher({ value, onChange }: Props) {
       <button
         onClick={() => setOpen((v) => !v)}
         className="p-3 rounded-xl glass-card hover:scale-105 transition-all duration-200"
-        aria-label={t(lang, 'toggleLanguage')}
-        title={t(lang, 'toggleLanguage')}
+        aria-label={`${t(lang, 'toggleLanguage')} (${t(lang, 'languageModeLabel')})`}
+        title={`${t(lang, 'toggleLanguage')} (${t(lang, 'languageModeLabel')})`}
       >
         {/* Language icon */}
         <svg className="w-6 h-6 text-gray-700 dark:text-gray-300" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
