@@ -44,7 +44,7 @@ export default function AgentPicker({ language, value, onChange }: Props) {
     (async () => {
       try {
         setLoading(true);
-        const res = await fetch('/api/admin/agents', { cache: 'no-store' });
+        const res = await fetch(`/api/admin/agents?lang=${language}`, { cache: 'no-store' });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = (await res.json()) as { agents: Agent[] };
         if (!cancelled) setAgents(data.agents || []);
@@ -57,7 +57,7 @@ export default function AgentPicker({ language, value, onChange }: Props) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [language]);
 
   const current = agents.find((a) => a.agentId === value) || agents[0];
 

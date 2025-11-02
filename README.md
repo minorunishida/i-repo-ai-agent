@@ -30,8 +30,18 @@ AZURE_CLIENT_SECRET=your-client-secret
 # Project Endpoint（Azure AI Foundry ポータルの対象プロジェクトで確認）
 AZURE_PROJECT_ENDPOINT=https://your-aiservices-id.services.ai.azure.com/api/projects/your-project-name
 
-# 実行に使う Agent（ポータル/SDKで作成済みのID）
+# エージェント設定（最大20個まで対応）
+# Agent 1 (デフォルト)
 AZURE_AGENT_ID=your-agent-id
+AZURE_AGENT_ID_NAME=i-Reporter Expert,i-Reporter専門家,i-Reporter专家,i-Reporter專家,ผู้เชี่ยวชาญ i-Reporter
+
+# Agent 2 (オプション)
+# AZURE_AGENT_ID2=your-second-agent-id
+# AZURE_AGENT_ID2_NAME=Technical Support,技術サポート,技术支持,技術支援,การสนับสนุนทางเทคนิค
+
+# 注: エージェント名はカンマ区切りで5言語対応
+# 順番: English, 日本語, 简体中文, 繁體中文, ไทย
+# 単一言語の場合はカンマなしでそのまま記載
 ```
 
 ### 3. Azure設定

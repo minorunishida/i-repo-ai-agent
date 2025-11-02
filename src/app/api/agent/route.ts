@@ -2,6 +2,8 @@
 import { ConfidentialClientApplication } from '@azure/msal-node';
 import { appendFile } from 'node:fs/promises';
 import { formatStreamPart } from 'ai';
+import { parseAgentName } from '@/lib/agentUtils';
+import { AppLanguage } from '@/lib/i18n';
 
 export const runtime = 'nodejs';   // SSE プロキシは Node 実行を推奨
 export const maxDuration = 60;
@@ -76,14 +78,14 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     console.log('API Route called');
-    
+
     // 環境変数のチェック
     const missingVars: string[] = [];
     if (!PROJECT_ENDPOINT) missingVars.push('AZURE_PROJECT_ENDPOINT');
     if (!CLIENT_ID) missingVars.push('AZURE_CLIENT_ID');
     if (!TENANT_ID) missingVars.push('AZURE_TENANT_ID');
     if (!CLIENT_SECRET) missingVars.push('AZURE_CLIENT_SECRET');
-    
+
     console.log('Environment variables check:', {
       PROJECT_ENDPOINT: !!PROJECT_ENDPOINT,
       AGENT_ID: !!AGENT_ID,
@@ -92,11 +94,11 @@ export async function POST(req: Request) {
       CLIENT_SECRET: !!CLIENT_SECRET,
       missingVars
     });
-    
+
     if (missingVars.length > 0) {
       console.error('Missing environment variables:', missingVars);
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           error: 'Environment variables not configured',
           missing: missingVars,
           hint: 'Please check your .env.local file and restart the dev server'
@@ -134,9 +136,10 @@ export async function POST(req: Request) {
       const idKey = idx === 1 ? 'AZURE_AGENT_ID' : `AZURE_AGENT_ID${idx}`;
       const nameKey = idx === 1 ? 'AZURE_AGENT_ID_NAME' : `AZURE_AGENT_ID${idx}_NAME`;
       const assistantId = process.env[idKey as keyof NodeJS.ProcessEnv];
-      const name = process.env[nameKey as keyof NodeJS.ProcessEnv];
-      if (assistantId && name) {
+      const nameEnv = process.env[nameKey as keyof NodeJS.ProcessEnv];
+      if (assistantId && nameEnv) {
         const agentId = idx === 1 ? 'default' : `agent${idx}`;
+        const name = parseAgentName(nameEnv, preferredLanguage as AppLanguage);
         registry.push({ agentId, name, assistantId, index: idx });
       }
     };
@@ -147,7 +150,7 @@ export async function POST(req: Request) {
     if (!defaultAgent) {
       console.error('No valid agent entries found in environment variables');
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           error: 'No agent configured',
           hint: 'Set AZURE_AGENT_ID and AZURE_AGENT_ID_NAME at least'
         }),
@@ -193,7 +196,7 @@ export async function POST(req: Request) {
       }
     };
     const langHint = languageInstruction(preferredLanguage);
-    
+
     if (!messages || !Array.isArray(messages)) {
       console.error('Invalid messages array:', { messages });
       return new Response(
@@ -241,7 +244,7 @@ export async function POST(req: Request) {
           statusText: addMessageRes.statusText,
           error: errorText
         });
-        
+
         // スレッドが存在しない場合は、新規スレッドを作成
         if (addMessageRes.status === 404) {
           console.log('Thread not found, creating new thread instead');
@@ -273,7 +276,7 @@ export async function POST(req: Request) {
         }
       }
     }
-    
+
     if (!threadId) {
       console.log('Creating new thread');
       // 新規スレッドを作成してRunを開始
@@ -339,7 +342,7 @@ export async function POST(req: Request) {
     // Azure SSEをAI SDKのストリーム形式に変換
     const encoder = new TextEncoder();
     let azureThreadId: string | null = null;
-    
+
     const stream = new ReadableStream({
       async start(controller) {
         try {
@@ -428,7 +431,7 @@ export async function POST(req: Request) {
       name: error instanceof Error ? error.name : undefined
     });
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         error: 'Internal server error',
         details: error instanceof Error ? error.message : String(error)
       }),
