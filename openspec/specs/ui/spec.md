@@ -51,6 +51,16 @@ The system SHALL provide an improved dark mode experience with modern color sche
 - **WHEN** user has system dark mode enabled
 - **THEN** the interface automatically adapts to the system preference
 
+#### Scenario: Input field text visibility in dark mode
+- **WHEN** user types in input fields while in dark mode
+- **THEN** the text is clearly visible with sufficient contrast (light text on dark background)
+- **AND** placeholder text is visible but distinguishable from input text
+
+#### Scenario: Consistent background on scroll in dark mode
+- **WHEN** user scrolls the page in dark mode
+- **THEN** the background gradient remains consistent throughout the entire viewport
+- **AND** no white or light backgrounds appear unexpectedly
+
 ### Requirement: Performance-Optimized Animations
 The system SHALL include smooth, performance-optimized animations and transitions.
 
