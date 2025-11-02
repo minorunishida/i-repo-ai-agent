@@ -23,20 +23,20 @@
     scrollbar-width: thin;
     scrollbar-color: rgb(156 163 175) transparent;
   }
-  
+
   .scrollbar-thin::-webkit-scrollbar {
     width: 6px;
   }
-  
+
   .scrollbar-thin::-webkit-scrollbar-track {
     background: transparent;
   }
-  
+
   .scrollbar-thin::-webkit-scrollbar-thumb {
     background-color: rgb(156 163 175);
     border-radius: 3px;
   }
-  
+
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
     background-color: rgb(107 114 128);
   }
@@ -47,60 +47,60 @@
   .glass {
     @apply bg-white/10 backdrop-blur-md border border-white/20;
   }
-  
+
   .glass-dark {
     @apply bg-black/10 backdrop-blur-md border border-white/10;
   }
-  
+
   .glass-card {
     @apply bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-glass dark:shadow-glass-dark;
   }
-  
+
   .gradient-bg {
     @apply bg-gradient-to-br from-honest-50 via-white to-honest-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900;
   }
-  
+
   .gradient-text {
     @apply bg-gradient-to-r from-honest-600 to-honest-500 bg-clip-text text-transparent;
   }
-  
+
   .gradient-bg-honest {
     @apply bg-gradient-to-br from-honest-50 via-white to-honest-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900;
   }
-  
+
   .btn-primary {
     @apply bg-gradient-to-r from-honest-500 to-honest-600 hover:from-honest-600 hover:to-honest-700 text-white font-medium px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 active:scale-95;
   }
-  
+
   .btn-secondary {
     @apply bg-white/80 dark:bg-gray-800/80 hover:bg-white dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 font-medium px-6 py-3 rounded-xl border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 active:scale-95;
   }
-  
+
   .input-modern {
-    @apply w-full px-4 py-3 bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-honest-500 focus:border-transparent transition-all duration-200 placeholder-gray-500 dark:placeholder-gray-400;
+    @apply w-full px-4 py-3 bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-honest-500 focus:border-transparent transition-all duration-200 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400;
   }
-  
+
   .message-user {
     @apply bg-gradient-to-r from-honest-500 to-honest-600 text-white rounded-2xl rounded-br-md px-4 py-3 shadow-lg;
   }
-  
+
   .message-assistant {
     @apply bg-white/90 dark:bg-gray-800/90 text-gray-800 dark:text-gray-200 rounded-2xl rounded-bl-md px-4 py-3 shadow-soft dark:shadow-soft-dark border border-gray-100 dark:border-gray-700;
   }
-  
+
   .loading-dots {
     @apply inline-flex space-x-1 items-center;
   }
-  
+
   .loading-dots > div {
     @apply w-2 h-2 bg-current rounded-full;
     animation: bounce-dots 0.8s ease-in-out infinite;
   }
-  
+
   .loading-dots > div:nth-child(2) {
     animation-delay: 0.15s;
   }
-  
+
   .loading-dots > div:nth-child(3) {
     animation-delay: 0.3s;
   }

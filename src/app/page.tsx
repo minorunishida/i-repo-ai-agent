@@ -1,15 +1,15 @@
 'use client';
 
-import { useChat } from 'ai/react';
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
-import ThreadSidebar from '@/components/ThreadSidebar';
-import FloatingIrepochan from '@/components/FloatingIrepochan';
-import { threadManager, Thread } from '@/lib/threadStorage';
-import LanguageSwitcher from '@/components/LanguageSwitcher';
 import AgentPicker, { getSavedAgentId, saveAgentId } from '@/components/AgentPicker';
+import FloatingIrepochan from '@/components/FloatingIrepochan';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 import ResourceLinks from '@/components/ResourceLinks';
+import ThreadSidebar from '@/components/ThreadSidebar';
 import { AppLanguage, getSavedLanguage, saveLanguage, t } from '@/lib/i18n';
+import { Thread, threadManager } from '@/lib/threadStorage';
+import { useChat } from 'ai/react';
+import { usePathname, useRouter } from 'next/navigation';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export default function Home() {
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -24,7 +24,7 @@ export default function Home() {
   const lastSavedMessageCount = useRef<number>(0);
 
   const { messages, input, handleInputChange, handleSubmit, isLoading, stop, error, setMessages } =
-    useChat({ 
+    useChat({
       api: '/api/agent',
       body: {
         threadId: activeThreadId,
@@ -40,20 +40,20 @@ export default function Home() {
             contentLength: message.content.length,
             threadId: activeThreadId
           });
-          
+
           const success = threadManager.addMessage(
             activeThreadId,
             message.role as 'user' | 'assistant' | 'function' | 'system' | 'data' | 'tool',
             message.content
           );
-          
+
           if (success) {
             // タイトルを自動更新
             threadManager.autoUpdateThreadTitle(activeThreadId);
-            
+
             setCurrentThread(threadManager.getActiveThread());
             lastSavedMessageCount.current = messages.length;
-            
+
             console.log('Assistant message saved successfully');
           } else {
             console.log('Failed to save assistant message (duplicate or error)');
@@ -75,7 +75,7 @@ export default function Home() {
     const savedTheme = localStorage.getItem('theme');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const shouldBeDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
-    
+
     setIsDarkMode(shouldBeDark);
     if (shouldBeDark) {
       document.documentElement.classList.add('dark');
@@ -143,7 +143,7 @@ export default function Home() {
           content: msg.content || '',
         }))
         .filter(msg => msg.content.trim().length > 0); // 空のメッセージを除外
-      
+
       console.log('Initializing with thread:', {
         threadId: activeThread.id,
         title: activeThread.title,
@@ -151,7 +151,7 @@ export default function Home() {
         messages: threadMessages,
         originalMessages: activeThread.messages
       });
-      
+
       setMessages(threadMessages);
       lastSavedMessageCount.current = threadMessages.length;
     }
@@ -165,7 +165,7 @@ export default function Home() {
         // 新しいメッセージのみを追加（ユーザーメッセージのみ）
         const newMessages = messages.slice(lastSavedMessageCount.current);
         const userMessages = newMessages.filter(msg => msg.role === 'user');
-        
+
         console.log('Checking for new user messages:', {
           activeThreadId,
           lastSavedCount: lastSavedMessageCount.current,
@@ -174,7 +174,7 @@ export default function Home() {
           userMessagesCount: userMessages.length,
           userMessages: userMessages.map(m => ({ role: m.role, content: m.content.substring(0, 20) + '...' }))
         });
-        
+
         if (userMessages.length > 0) {
           userMessages.forEach(message => {
             threadManager.addMessage(
@@ -183,10 +183,10 @@ export default function Home() {
               message.content
             );
           });
-          
+
           // タイトルを自動更新
           threadManager.autoUpdateThreadTitle(activeThreadId);
-          
+
           setCurrentThread(threadManager.getActiveThread());
           lastSavedMessageCount.current = messages.length;
         }
@@ -233,13 +233,13 @@ export default function Home() {
         });
       }
     }
-    
+
     const newThread = threadManager.createThread();
     setActiveThreadId(newThread.id);
     setCurrentThread(newThread);
     setMessages([]);
     lastSavedMessageCount.current = 0;
-    
+
     console.log('New thread created:', {
       threadId: newThread.id,
       lastSavedMessageCount: lastSavedMessageCount.current
@@ -261,13 +261,13 @@ export default function Home() {
         });
       }
     }
-    
+
     if (threadManager.setActiveThread(threadId)) {
       const thread = threadManager.getActiveThread();
       if (thread) {
         setActiveThreadId(threadId);
         setCurrentThread(thread);
-        
+
         // スレッドのメッセージをuseChatに設定
         const threadMessages = thread.messages
           .filter(msg => msg.role === 'user' || msg.role === 'assistant') // user/assistantのみ
@@ -277,7 +277,7 @@ export default function Home() {
             content: msg.content || '',
           }))
           .filter(msg => msg.content.trim().length > 0); // 空のメッセージを除外
-        
+
         console.log('Loading thread messages:', {
           threadId,
           messageCount: threadMessages.length,
@@ -285,7 +285,7 @@ export default function Home() {
           originalMessages: thread.messages,
           filteredMessages: thread.messages.filter(msg => msg.role === 'user' || msg.role === 'assistant')
         });
-        
+
         setMessages(threadMessages);
         lastSavedMessageCount.current = threadMessages.length;
         console.log('Messages set:', threadMessages);
@@ -298,11 +298,12 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen gradient-bg p-4 sm:p-6">
+    <div className="h-screen gradient-bg p-4 sm:p-6 overflow-hidden">
       {/* アイレポちゃんの浮遊アニメーション */}
       <FloatingIrepochan isResponding={isLoading} />
-      
-      <div className="max-w-6xl mx-auto h-[80vh] flex">
+
+      <div className="max-w-6xl mx-auto h-full flex flex-col">
+        <div className="flex-1 flex overflow-hidden">
         {/* スレッドサイドバー */}
         <ThreadSidebar
           activeThreadId={activeThreadId}
@@ -312,7 +313,7 @@ export default function Home() {
           onToggleCollapse={handleToggleSidebar}
           language={language}
         />
-        
+
         {/* メインコンテンツ */}
         <div className="flex-1 flex flex-col ml-4">
           {/* Header */}
@@ -356,7 +357,7 @@ export default function Home() {
               <ResourceLinks language={language} />
             </div>
           </div>
-          
+
           {/* Chat Container */}
           <div className="flex-1 glass-card rounded-2xl p-6 flex flex-col animate-scale-in">
             {/* Messages Area */}
@@ -378,7 +379,7 @@ export default function Home() {
                   </div>
                 </div>
               )}
-              
+
               {messages.map((message, index) => (
                 <div
                   key={message.id}
@@ -392,7 +393,7 @@ export default function Home() {
                   </div>
                 </div>
               ))}
-              
+
               {isLoading && (
                 <div className="flex justify-start mb-4 animate-slide-up">
                   <div className="message-assistant">
@@ -475,6 +476,7 @@ export default function Home() {
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );
