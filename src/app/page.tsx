@@ -115,11 +115,19 @@ export default function Home() {
     const idx = parseIndexFromPath(pathname);
     const target = agents.find(a => a.index === idx) || agents.find(a => a.index === 1) || agents[0];
     if (!target) return;
+
+    // 存在しないエージェントindexの場合、適切なURLにリダイレクト
+    if (target.index !== idx) {
+      console.log(`Agent index ${idx} not found, redirecting to ${target.index}`);
+      router.replace(`/agent/${target.index}`);
+      return;
+    }
+
     if (agentId !== target.agentId) {
       setAgentId(target.agentId);
       saveAgentId(target.agentId);
     }
-  }, [pathname, agents]);
+  }, [pathname, agents, router, agentId]);
 
   // 言語変更時に <html lang> を更新
   useEffect(() => {
@@ -130,31 +138,38 @@ export default function Home() {
 
   // スレッド管理の初期化
   useEffect(() => {
-    const activeThread = threadManager.getActiveThread();
-    if (activeThread) {
-      setActiveThreadId(activeThread.id);
-      setCurrentThread(activeThread);
-      // スレッドのメッセージをuseChatに設定
-      const threadMessages = activeThread.messages
-        .filter(msg => msg.role === 'user' || msg.role === 'assistant') // user/assistantのみ
-        .map((msg, index) => ({
-          id: msg.id || `msg-${index}-${Date.now()}`,
-          role: msg.role as 'user' | 'assistant',
-          content: msg.content || '',
-        }))
-        .filter(msg => msg.content.trim().length > 0); // 空のメッセージを除外
+    let activeThread = threadManager.getActiveThread();
 
-      console.log('Initializing with thread:', {
-        threadId: activeThread.id,
-        title: activeThread.title,
-        messageCount: threadMessages.length,
-        messages: threadMessages,
-        originalMessages: activeThread.messages
-      });
-
-      setMessages(threadMessages);
-      lastSavedMessageCount.current = threadMessages.length;
+    // アクティブなスレッドがない場合は自動的に作成
+    if (!activeThread) {
+      console.log('No active thread found, creating new thread automatically');
+      activeThread = threadManager.createThread();
     }
+
+    setActiveThreadId(activeThread.id);
+    setCurrentThread(activeThread);
+
+    // スレッドのメッセージをuseChatに設定
+    const threadMessages = activeThread.messages
+      .filter(msg => msg.role === 'user' || msg.role === 'assistant') // user/assistantのみ
+      .map((msg, index) => ({
+        id: msg.id || `msg-${index}-${Date.now()}`,
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content || '',
+      }))
+      .filter(msg => msg.content.trim().length > 0); // 空のメッセージを除外
+
+    console.log('Initializing with thread:', {
+      threadId: activeThread.id,
+      title: activeThread.title,
+      messageCount: threadMessages.length,
+      isNewThread: threadMessages.length === 0,
+      messages: threadMessages,
+      originalMessages: activeThread.messages
+    });
+
+    setMessages(threadMessages);
+    lastSavedMessageCount.current = threadMessages.length;
   }, []);
 
   // メッセージが変更されたときにローカルストレージに保存（ユーザーメッセージのみ）
@@ -315,7 +330,7 @@ export default function Home() {
         />
 
         {/* メインコンテンツ */}
-        <div className="flex-1 flex flex-col ml-4">
+        <div className="flex-1 flex flex-col ml-4 min-h-0">
           {/* Header */}
           <div className="flex items-center justify-between mb-6 animate-fade-in">
             <h1 className="text-3xl sm:text-4xl font-display font-bold gradient-text">
@@ -359,7 +374,7 @@ export default function Home() {
           </div>
 
           {/* Chat Container */}
-          <div className="flex-1 glass-card rounded-2xl p-6 flex flex-col animate-scale-in">
+          <div className="flex-1 glass-card rounded-2xl p-6 flex flex-col animate-scale-in min-h-0 overflow-hidden">
             {/* Messages Area */}
             <div className="flex-1 overflow-y-auto mb-6 scrollbar-thin">
               {messages.length === 0 && (

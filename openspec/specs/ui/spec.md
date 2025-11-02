@@ -61,6 +61,20 @@ The system SHALL provide an improved dark mode experience with modern color sche
 - **THEN** the background gradient remains consistent throughout the entire viewport
 - **AND** no white or light backgrounds appear unexpectedly
 
+### Requirement: Automatic Thread Creation on First Access
+The system SHALL automatically create a conversation thread when user first accesses the application if no active thread exists.
+
+#### Scenario: Initial thread creation
+- **WHEN** user accesses the application for the first time or when no active thread exists
+- **THEN** a new thread is automatically created
+- **AND** the thread is saved to localStorage immediately
+- **AND** the sidebar displays the newly created thread
+
+#### Scenario: Thread persistence across sessions
+- **WHEN** user sends messages in the auto-created thread
+- **THEN** all messages are saved to the thread
+- **AND** the thread title is updated based on the first user message
+
 ### Requirement: Performance-Optimized Animations
 The system SHALL include smooth, performance-optimized animations and transitions.
 

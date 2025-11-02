@@ -64,6 +64,24 @@ Azure AI Foundry Agent ServiceとVercel AI SDKを統合し、リアルタイム�
 - **WHEN** 既存スレッドでRunを開始する
 - **THEN** サーバはRun前に言語リマインドのメッセージを追加する
 
+### Requirement: Thread-Based Context Continuity
+システムはthreadIdを使用して会話コンテキストを維持し、エージェント切り替えやページリロード後も継続しなければならない（SHALL）。
+
+#### Scenario: Thread continuation across sessions
+- **WHEN** ユーザーが会話を開始してスレッドを作成する
+- **THEN** 後続のメッセージは同じthreadIdを使用する
+- **AND** threadIdはlocalStorageに保存される
+
+#### Scenario: Thread availability across agents
+- **WHEN** ユーザーがエージェント間で切り替える
+- **THEN** 同じスレッド履歴がすべてのエージェントで利用可能
+- **AND** 会話コンテキストがシームレスに維持される
+
+#### Scenario: Automatic thread initialization
+- **WHEN** ユーザーがアクティブなスレッドなしでアプリケーションにアクセスする
+- **THEN** 新しいスレッドが自動的に作成されてアクティブに設定される
+- **AND** スレッドは即座にメッセージを受信する準備ができている
+
 ### Requirement: Agent Name Internationalization
 システムは環境変数のカンマ区切り値による多言語エージェント名をサポートし、ユーザーが選択した言語に応じて表示しなければならない（SHALL）。
 
