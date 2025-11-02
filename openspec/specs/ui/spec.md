@@ -100,6 +100,11 @@ The system SHALL provide end-user language selection and localize UI strings.
 - **WHEN** a language is selected
 - **THEN** the `<html lang>` attribute reflects that language code
 
+#### Scenario: Agent names update with language
+- **WHEN** the user changes the language
+- **THEN** the agent picker fetches and displays agent names in the selected language
+- **AND** the agent names are updated immediately without requiring page reload
+
 #### Scenario: Resource links menu next to Language icon
 - **WHEN** the user clicks the link icon placed immediately next to the Language icon
 - **THEN** a menu appears with five items: i-Reporter Homepage, i-Reporter Knowledge Base, Support Web, Technical Support Request Form, and Genba Form Kaizen Club

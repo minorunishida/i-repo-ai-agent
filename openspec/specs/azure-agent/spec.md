@@ -63,3 +63,22 @@ Azure AI Foundry Agent ServiceとVercel AI SDKを統合し、リアルタイム�
 #### Scenario: Existing thread language instruction
 - **WHEN** 既存スレッドでRunを開始する
 - **THEN** サーバはRun前に言語リマインドのメッセージを追加する
+
+### Requirement: Agent Name Internationalization
+システムは環境変数のカンマ区切り値による多言語エージェント名をサポートし、ユーザーが選択した言語に応じて表示しなければならない（SHALL）。
+
+#### Scenario: Environment variable parsing
+- **WHEN** エージェントAPIが環境変数から設定を読み込む
+- **THEN** `AZURE_AGENT_ID_NAME`（および `AZURE_AGENT_ID{N}_NAME`）をカンマ区切り値として、順番 `en, ja, zh-Hans, zh-Hant, th` でパースする
+
+#### Scenario: Language-specific agent name display
+- **WHEN** 管理用エージェントAPIが `lang` クエリパラメータ付きでリクエストを受信する
+- **THEN** パースされたカンマ区切り値に基づいて、指定された言語のエージェント名を返す
+
+#### Scenario: Fallback for single-language names
+- **WHEN** 環境変数が単一値（カンマなし）を含む
+- **THEN** その値をすべての言語で使用する
+
+#### Scenario: Fallback for missing translations
+- **WHEN** リクエストされた言語のインデックスがカンマ区切りリストにない
+- **THEN** システムは日本語、次に英語、次に最初の利用可能な値の順にフォールバックする
