@@ -22,34 +22,40 @@ export default function Home() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [currentThread, setCurrentThread] = useState<Thread | null>(null);
   const lastSavedMessageCount = useRef<number>(0);
+  const requestThreadIdRef = useRef<string | null>(null); // リクエスト送信時のスレッドIDを記録
 
-  const { messages, input, handleInputChange, handleSubmit, isLoading, stop, error, setMessages } =
+  const { messages, input, handleInputChange, handleSubmit, isLoading, stop, error, setMessages, data } =
     useChat({
       api: '/api/agent',
       body: {
         threadId: activeThreadId,
+        azureThreadId: currentThread?.azureThreadId,
         preferredLanguage: language,
         agentId: agentId || undefined,
       },
       onFinish: (message) => {
+        // ストリーミング完了後に、リクエスト送信時のスレッドIDをクリア
+        const requestThreadId = requestThreadIdRef.current;
+        requestThreadIdRef.current = null;
+
         // ストリーミング完了後にメッセージを保存
-        if (activeThreadId && message.role === 'assistant') {
+        if (requestThreadId && message.role === 'assistant') {
           console.log('Streaming finished, saving assistant message:', {
             role: message.role,
             content: message.content.substring(0, 50) + '...',
             contentLength: message.content.length,
-            threadId: activeThreadId
+            threadId: requestThreadId
           });
 
           const success = threadManager.addMessage(
-            activeThreadId,
+            requestThreadId,
             message.role as 'user' | 'assistant' | 'function' | 'system' | 'data' | 'tool',
             message.content
           );
 
           if (success) {
             // タイトルを自動更新
-            threadManager.autoUpdateThreadTitle(activeThreadId);
+            threadManager.autoUpdateThreadTitle(requestThreadId);
 
             setCurrentThread(threadManager.getActiveThread());
             lastSavedMessageCount.current = messages.length;
@@ -172,9 +178,38 @@ export default function Home() {
     lastSavedMessageCount.current = threadMessages.length;
   }, []);
 
+  // dataイベントを監視してAzureスレッドIDを保存
+  useEffect(() => {
+    if (data && Array.isArray(data) && requestThreadIdRef.current) {
+      data.forEach((item: any) => {
+        if (item.type === 'azure-thread-id' && item.threadId) {
+          const requestThreadId = requestThreadIdRef.current;
+          console.log('Azure thread ID received from stream:', {
+            azureThreadId: item.threadId,
+            localThreadId: requestThreadId
+          });
+
+          if (requestThreadId) {
+            const success = threadManager.updateAzureThreadId(requestThreadId, item.threadId);
+            if (success) {
+              // 現在アクティブなスレッドの場合のみ、currentThreadを更新
+              if (requestThreadId === activeThreadId) {
+                setCurrentThread(threadManager.getActiveThread());
+              }
+              console.log('Azure thread ID saved successfully to thread:', requestThreadId);
+            }
+          }
+        }
+      });
+    }
+  }, [data, activeThreadId]);
+
   // メッセージが変更されたときにローカルストレージに保存（ユーザーメッセージのみ）
   useEffect(() => {
     if (activeThreadId && messages.length > lastSavedMessageCount.current) {
+      // リクエスト送信時のスレッドIDを記録
+      requestThreadIdRef.current = activeThreadId;
+
       const thread = threadManager.getActiveThread();
       if (thread) {
         // 新しいメッセージのみを追加（ユーザーメッセージのみ）
