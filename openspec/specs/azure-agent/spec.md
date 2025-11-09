@@ -64,7 +64,7 @@ Azure AI Foundry Agent ServiceとVercel AI SDKを統合し、リアルタイム�
 - **AND** 新規スレッド作成時に既に設定された言語指示が継続して適用される
 
 ### Requirement: Thread-Based Context Continuity
-システムはthreadIdを使用して会話コンテキストを維持し、エージェント切り替えやページリロード後も継続しなければならない（SHALL）。システムはAzure Agent Serviceから返されたスレッドIDを使用し、ローカルで生成したスレッドIDではなくAzure側のスレッドIDを保持しなければならない。
+システムはthreadIdを使用して会話コンテキストを維持し、エージェント切り替えやページリロード後も継続しなければならない（SHALL）。システムはAzure Agent Serviceから返されたスレッドIDを使用し、ローカルで生成したスレッドIDではなくAzure側のスレッドIDを保持しなければならない。システムは会話が始まったらエージェント切り替えを無効化し、会話の混在を防がなければならない。
 
 #### Scenario: Thread continuation across sessions
 - **WHEN** ユーザーが会話を開始してスレッドを作成する
@@ -73,27 +73,15 @@ Azure AI Foundry Agent ServiceとVercel AI SDKを統合し、リアルタイム�
 - **AND** AzureスレッドIDはlocalStorageの`Thread.azureThreadId`フィールドに保存される
 - **AND** ローカル管理用のID（`Thread.id`）も保持される
 
-#### Scenario: Thread availability across agents
-- **WHEN** ユーザーがエージェント間で切り替える
-- **THEN** 同じAzureスレッドIDがすべてのエージェントで利用可能
-- **AND** 会話コンテキストがシームレスに維持される
+#### Scenario: Agent switch prevention during conversation
+- **WHEN** 会話が始まったら（メッセージがある状態）
+- **THEN** エージェント切り替えは無効化される
+- **AND** 会話の混在を防ぐ
 
-#### Scenario: Azure thread ID synchronization
-- **WHEN** 新規スレッドがAzure側で作成される
-- **THEN** Azureから返されたスレッドIDがクライアント側に送信される
-- **AND** クライアント側でAzureスレッドIDが保存される
-- **AND** 後続のリクエストでAzureスレッドIDが使用される
-
-#### Scenario: Thread validation and fallback
-- **WHEN** 既存スレッドにメッセージを追加しようとする
-- **THEN** Azure側でスレッドが存在することを確認する
-- **AND** スレッドが存在しない場合（404エラー）、新規スレッドを作成する
-
-#### Scenario: Local storage persistence
-- **WHEN** AzureスレッドIDが取得される
-- **THEN** `Thread.azureThreadId`フィールドに保存される
-- **AND** localStorageの`ai-sdk-threads`キーに保存される
-- **AND** ページリロード後も`azureThreadId`が復元される
+#### Scenario: Agent switch re-enable on new thread
+- **WHEN** 新しいスレッドが作成される
+- **THEN** エージェント切り替えが再有効化される
+- **AND** 新しい会話を開始できる
 
 ### Requirement: Agent Name Internationalization
 システムは環境変数のカンマ区切り値による多言語エージェント名をサポートし、ユーザーが選択した言語に応じて表示しなければならない（SHALL）。

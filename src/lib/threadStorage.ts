@@ -8,6 +8,7 @@ export interface ThreadMessage {
 export interface Thread {
   id: string;
   azureThreadId?: string; // Azureから返されたスレッドID
+  agentId?: string; // このスレッドで使用されたエージェントID
   title: string;
   messages: ThreadMessage[];
   createdAt: number;
@@ -102,13 +103,14 @@ export class ThreadManager {
     }
   }
 
-  public createThread(): Thread {
+  public createThread(agentId?: string): Thread {
     const threadId = this.generateThreadId();
     const now = Date.now();
 
     const newThread: Thread = {
       id: threadId,
       azureThreadId: undefined, // 最初は未設定、Azure作成後に設定される
+      agentId: agentId, // このスレッドで使用されたエージェントID
       title: '新しい会話',
       messages: [],
       createdAt: now,
@@ -132,6 +134,17 @@ export class ThreadManager {
     thread.updatedAt = Date.now();
     this.saveToStorage();
     console.log(`Azure thread ID updated for thread ${threadId}:`, azureThreadId);
+    return true;
+  }
+
+  public updateThreadAgentId(threadId: string, agentId: string): boolean {
+    const thread = this.threads.find(t => t.id === threadId);
+    if (!thread) return false;
+
+    thread.agentId = agentId;
+    thread.updatedAt = Date.now();
+    this.saveToStorage();
+    console.log(`Agent ID updated for thread ${threadId}:`, agentId);
     return true;
   }
 

@@ -129,11 +129,12 @@ export default function Home() {
       return;
     }
 
+    // agentIdが異なる場合のみ更新（無限ループを防ぐ）
     if (agentId !== target.agentId) {
       setAgentId(target.agentId);
       saveAgentId(target.agentId);
     }
-  }, [pathname, agents, router, agentId]);
+  }, [pathname, agents, router]); // agentIdを依存関係から削除（無限ループを防ぐ）
 
   // 言語変更時に <html lang> を更新
   useEffect(() => {
@@ -142,41 +143,51 @@ export default function Home() {
     }
   }, [language]);
 
-  // スレッド管理の初期化
+  // スレッド管理の初期化（初回のみ実行）
+  const threadInitializedRef = useRef(false);
   useEffect(() => {
+    // agentsが読み込まれるまで待つ
+    if (!agents || agents.length === 0) return;
+    // 既に初期化済みの場合はスキップ
+    if (threadInitializedRef.current) return;
+    
     let activeThread = threadManager.getActiveThread();
 
-    // アクティブなスレッドがない場合は自動的に作成
+    // アクティブなスレッドがない場合のみ自動的に作成
     if (!activeThread) {
       console.log('No active thread found, creating new thread automatically');
-      activeThread = threadManager.createThread();
+      activeThread = threadManager.createThread(agentId || undefined);
+    } else if (activeThread.agentId && activeThread.agentId !== agentId) {
+      // スレッドのagentIdと現在のagentIdが異なる場合、スレッドのagentIdに切り替える
+      // URL同期のuseEffectが処理するため、ここではsetAgentIdだけを呼ぶ
+      console.log('Thread agentId differs from current, switching agent:', {
+        threadAgentId: activeThread.agentId,
+        currentAgentId: agentId
+      });
+      setAgentId(activeThread.agentId);
+      saveAgentId(activeThread.agentId);
+      threadInitializedRef.current = true;
+      return;
     }
 
+    // 既存のスレッドがある場合は、そのまま使用
     setActiveThreadId(activeThread.id);
     setCurrentThread(activeThread);
 
     // スレッドのメッセージをuseChatに設定
     const threadMessages = activeThread.messages
-      .filter(msg => msg.role === 'user' || msg.role === 'assistant') // user/assistantのみ
+      .filter(msg => msg.role === 'user' || msg.role === 'assistant')
       .map((msg, index) => ({
         id: msg.id || `msg-${index}-${Date.now()}`,
         role: msg.role as 'user' | 'assistant',
         content: msg.content || '',
       }))
-      .filter(msg => msg.content.trim().length > 0); // 空のメッセージを除外
-
-    console.log('Initializing with thread:', {
-      threadId: activeThread.id,
-      title: activeThread.title,
-      messageCount: threadMessages.length,
-      isNewThread: threadMessages.length === 0,
-      messages: threadMessages,
-      originalMessages: activeThread.messages
-    });
+      .filter(msg => msg.content.trim().length > 0);
 
     setMessages(threadMessages);
     lastSavedMessageCount.current = threadMessages.length;
-  }, []);
+    threadInitializedRef.current = true;
+  }, [agents, agentId, router]);
 
   // dataイベントを監視してAzureスレッドIDを保存
   useEffect(() => {
@@ -284,7 +295,7 @@ export default function Home() {
       }
     }
 
-    const newThread = threadManager.createThread();
+    const newThread = threadManager.createThread(agentId || undefined);
     setActiveThreadId(newThread.id);
     setCurrentThread(newThread);
     setMessages([]);
@@ -292,9 +303,10 @@ export default function Home() {
 
     console.log('New thread created:', {
       threadId: newThread.id,
+      agentId: newThread.agentId,
       lastSavedMessageCount: lastSavedMessageCount.current
     });
-  }, [activeThreadId, messages]);
+  }, [activeThreadId, messages, agentId]);
 
   const handleThreadSelect = useCallback((threadId: string) => {
     // 現在のメッセージを保存（もしあれば）
@@ -318,6 +330,20 @@ export default function Home() {
         setActiveThreadId(threadId);
         setCurrentThread(thread);
 
+        // スレッドのagentIdにエージェントを切り替える（URL同期のuseEffectに任せる）
+        if (thread.agentId && thread.agentId !== agentId) {
+          console.log('Switching agent to match thread:', {
+            threadAgentId: thread.agentId,
+            currentAgentId: agentId
+          });
+          const entry = agents.find(a => a.agentId === thread.agentId);
+          if (entry) {
+            setAgentId(thread.agentId);
+            saveAgentId(thread.agentId);
+            // URL同期のuseEffectが処理するため、ここではrouter.replaceを呼ばない
+          }
+        }
+
         // スレッドのメッセージをuseChatに設定
         const threadMessages = thread.messages
           .filter(msg => msg.role === 'user' || msg.role === 'assistant') // user/assistantのみ
@@ -330,6 +356,7 @@ export default function Home() {
 
         console.log('Loading thread messages:', {
           threadId,
+          agentId: thread.agentId,
           messageCount: threadMessages.length,
           messages: threadMessages,
           originalMessages: thread.messages,
@@ -341,7 +368,7 @@ export default function Home() {
         console.log('Messages set:', threadMessages);
       }
     }
-  }, [activeThreadId, messages]);
+  }, [activeThreadId, messages, agentId, agents]);
 
   const handleToggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
@@ -376,14 +403,23 @@ export default function Home() {
                 language={language}
                 value={agentId}
                 onChange={(nextId) => {
+                  // メッセージがない場合は、現在のスレッドのagentIdを更新するだけ
+                  if (messages.length === 0 && activeThreadId) {
+                    threadManager.updateThreadAgentId(activeThreadId, nextId);
+                    const updatedThread = threadManager.getActiveThread();
+                    if (updatedThread) {
+                      setCurrentThread(updatedThread);
+                    }
+                  }
+
                   setAgentId(nextId);
                   saveAgentId(nextId);
                   const entry = agents.find(a => a.agentId === nextId);
                   const nextIndex = entry?.index || 1;
                   const nextPath = `/agent/${nextIndex}`;
-                  // 遷移によるリロードは避け、履歴差し替えで同期
                   router.replace(nextPath);
                 }}
+                disabled={messages.length > 0}
               />
               <LanguageSwitcher value={language} onChange={handleLanguageChange} />
 

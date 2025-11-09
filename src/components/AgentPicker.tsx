@@ -9,6 +9,7 @@ type Props = {
   language: AppLanguage;
   value?: string | null;
   onChange: (agentId: string) => void;
+  disabled?: boolean;
 };
 
 const STORAGE_KEY = 'agent_id';
@@ -23,7 +24,7 @@ export function saveAgentId(agentId: string) {
   window.localStorage.setItem(STORAGE_KEY, agentId);
 }
 
-export default function AgentPicker({ language, value, onChange }: Props) {
+export default function AgentPicker({ language, value, onChange, disabled = false }: Props) {
   const [open, setOpen] = useState(false);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,12 +66,12 @@ export default function AgentPicker({ language, value, onChange }: Props) {
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="p-3 h-10 leading-none rounded-xl glass-card hover:scale-105 transition-all duration-200 text-sm text-gray-700 dark:text-gray-200 flex items-center gap-2"
+        className="p-3 h-10 leading-none rounded-xl glass-card hover:scale-105 transition-all duration-200 text-sm text-gray-700 dark:text-gray-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label="Select agent"
-        title="Select agent"
-        disabled={loading || !!error}
+        title={disabled ? "Agent cannot be changed during conversation" : "Select agent"}
+        disabled={loading || !!error || disabled}
       >
         <span>{current ? current.name : 'Agent'}</span>
         <svg className="w-4 h-4 opacity-70" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -78,7 +79,7 @@ export default function AgentPicker({ language, value, onChange }: Props) {
         </svg>
       </button>
 
-      {open && !loading && !error && (
+      {open && !loading && !error && !disabled && (
         <div className="absolute right-0 mt-2 min-w-[14rem] max-w-xs rounded-xl glass-card py-2 z-50" role="listbox">
           {agents.map((a) => (
             <button
