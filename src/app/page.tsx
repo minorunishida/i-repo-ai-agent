@@ -24,6 +24,7 @@ export default function Home() {
   const [currentThread, setCurrentThread] = useState<Thread | null>(null);
   const lastSavedMessageCount = useRef<number>(0);
   const requestThreadIdRef = useRef<string | null>(null); // リクエスト送信時のスレッドIDを記録
+  const loadingThreadRef = useRef<string | null>(null); // 読み込み中のスレッドID
 
   const { messages, input, handleInputChange, handleSubmit, isLoading, stop, error, setMessages, data } =
     useChat({
@@ -56,9 +57,20 @@ export default function Home() {
 
           if (success) {
             // タイトルを自動更新
-            threadManager.autoUpdateThreadTitle(requestThreadId);
+            const titleUpdated = threadManager.autoUpdateThreadTitle(requestThreadId, language);
 
-            setCurrentThread(threadManager.getActiveThread());
+            // 更新されたスレッド情報を取得して反映
+            const updatedThread = threadManager.getActiveThread();
+            if (updatedThread) {
+              setCurrentThread(updatedThread);
+              console.log('Thread updated after assistant message:', {
+                threadId: updatedThread.id,
+                title: updatedThread.title,
+                titleUpdated,
+                messageCount: updatedThread.messages.length
+              });
+            }
+
             lastSavedMessageCount.current = messages.length;
 
             console.log('Assistant message saved successfully');
@@ -107,26 +119,42 @@ export default function Home() {
     return () => { cancelled = true; };
   }, []);
 
-  // URL → UI 同期（/agent/{index} または / → index 1）
+  // URL → UI 同期（/agent/{index} または / → 未選択）
   useEffect(() => {
+    // スレッド選択中の場合はスキップ（handleThreadSelectで処理中）
+    if (isSelectingThreadRef.current) return;
+
     if (!agents || agents.length === 0) return;
-    const parseIndexFromPath = (p: string | null): number => {
-      if (!p || p === '/') return 1;
+    const parseIndexFromPath = (p: string | null): number | null => {
+      if (!p || p === '/') return null; // ルートパスは未選択状態
       const parts = p.split('/').filter(Boolean);
       if (parts.length >= 2 && parts[0] === 'agent') {
         const n = parseInt(parts[1], 10);
-        return Number.isFinite(n) && n >= 1 ? n : 1;
+        return Number.isFinite(n) && n >= 1 ? n : null;
       }
-      return 1;
+      return null;
     };
     const idx = parseIndexFromPath(pathname);
-    const target = agents.find(a => a.index === idx) || agents.find(a => a.index === 1) || agents[0];
-    if (!target) return;
 
-    // 存在しないエージェントindexの場合、適切なURLにリダイレクト
-    if (target.index !== idx) {
-      console.log(`Agent index ${idx} not found, redirecting to ${target.index}`);
-      router.replace(`/agent/${target.index}`);
+    // ルートパス（/）の場合はエージェントを未選択状態にする
+    if (idx === null) {
+      if (agentId !== null) {
+        setAgentId(null);
+        // localStorageはクリアしない（ユーザーの選択を保持）
+      }
+      return;
+    }
+
+    // エージェントindexが指定されている場合
+    const target = agents.find(a => a.index === idx);
+
+    // 存在しないエージェントindexの場合、index 1 にフォールバックしてリダイレクト
+    if (!target) {
+      const fallback = agents.find(a => a.index === 1) || agents[0];
+      if (fallback) {
+        console.log(`Agent index ${idx} not found, redirecting to ${fallback.index}`);
+        router.replace(`/agent/${fallback.index}`);
+      }
       return;
     }
 
@@ -135,7 +163,7 @@ export default function Home() {
       setAgentId(target.agentId);
       saveAgentId(target.agentId);
     }
-  }, [pathname, agents, router]); // agentIdを依存関係から削除（無限ループを防ぐ）
+  }, [pathname, agents, router, agentId]); // agentIdを依存関係に追加（nullチェックのため）
 
   // 言語変更時に <html lang> を更新
   useEffect(() => {
@@ -146,18 +174,23 @@ export default function Home() {
 
   // スレッド管理の初期化（初回のみ実行）
   const threadInitializedRef = useRef(false);
+  const isSelectingThreadRef = useRef(false); // スレッド選択中フラグ
   useEffect(() => {
     // agentsが読み込まれるまで待つ
     if (!agents || agents.length === 0) return;
     // 既に初期化済みの場合はスキップ
     if (threadInitializedRef.current) return;
+    // activeThreadIdが既に設定されている場合はスキップ（スレッド選択済み）
+    if (activeThreadId) return;
+    // スレッド選択中の場合はスキップ（handleThreadSelectで処理中）
+    if (isSelectingThreadRef.current) return;
 
     let activeThread = threadManager.getActiveThread();
 
     // アクティブなスレッドがない場合のみ自動的に作成
     if (!activeThread) {
       console.log('No active thread found, creating new thread automatically');
-      activeThread = threadManager.createThread(agentId || undefined);
+      activeThread = threadManager.createThread(agentId || undefined, language);
     } else if (activeThread.agentId && activeThread.agentId !== agentId) {
       // スレッドのagentIdと現在のagentIdが異なる場合、スレッドのagentIdに切り替える
       // URL同期のuseEffectが処理するため、ここではsetAgentIdだけを呼ぶ
@@ -216,6 +249,47 @@ export default function Home() {
     }
   }, [data, activeThreadId]);
 
+  // activeThreadIdが変更されたときに、スレッドのメッセージを確実に読み込む
+  useEffect(() => {
+    // スレッド選択中の場合はスキップ（handleThreadSelectで処理中）
+    if (isSelectingThreadRef.current) return;
+    // 既に読み込み中のスレッドの場合はスキップ
+    if (loadingThreadRef.current === activeThreadId) return;
+
+    if (activeThreadId) {
+      const thread = threadManager.getThreads().find(t => t.id === activeThreadId);
+      if (thread && thread.messages.length > 0) {
+        // メッセージが空、またはlastSavedMessageCountが0で、スレッドにメッセージがある場合は読み込む
+        if (messages.length === 0 || (messages.length === 0 && lastSavedMessageCount.current === 0)) {
+          const threadMessages = thread.messages
+            .filter(msg => msg.role === 'user' || msg.role === 'assistant')
+            .map((msg, index) => ({
+              id: msg.id || `msg-${index}-${Date.now()}`,
+              role: msg.role as 'user' | 'assistant',
+              content: msg.content || '',
+            }))
+            .filter(msg => msg.content.trim().length > 0);
+
+          if (threadMessages.length > 0) {
+            loadingThreadRef.current = activeThreadId;
+            console.log('Loading thread messages on activeThreadId change:', {
+              threadId: activeThreadId,
+              messageCount: threadMessages.length,
+              currentMessagesLength: messages.length
+            });
+            // メッセージを確実に設定（useChatの再初期化を防ぐため、同期的に実行）
+            setMessages(threadMessages);
+            lastSavedMessageCount.current = threadMessages.length;
+            // 読み込み完了後にフラグをリセット
+            setTimeout(() => {
+              loadingThreadRef.current = null;
+            }, 100);
+          }
+        }
+      }
+    }
+  }, [activeThreadId, messages.length, setMessages]);
+
   // メッセージが変更されたときにローカルストレージに保存（ユーザーメッセージのみ）
   useEffect(() => {
     if (activeThreadId && messages.length > lastSavedMessageCount.current) {
@@ -247,9 +321,20 @@ export default function Home() {
           });
 
           // タイトルを自動更新
-          threadManager.autoUpdateThreadTitle(activeThreadId);
+          const titleUpdated = threadManager.autoUpdateThreadTitle(activeThreadId, language);
 
-          setCurrentThread(threadManager.getActiveThread());
+          // 更新されたスレッド情報を取得して反映
+          const updatedThread = threadManager.getActiveThread();
+          if (updatedThread) {
+            setCurrentThread(updatedThread);
+            console.log('Thread updated after user message:', {
+              threadId: updatedThread.id,
+              title: updatedThread.title,
+              titleUpdated,
+              messageCount: updatedThread.messages.length
+            });
+          }
+
           lastSavedMessageCount.current = messages.length;
         }
       }
@@ -296,25 +381,41 @@ export default function Home() {
       }
     }
 
-    const newThread = threadManager.createThread(agentId || undefined);
+    // 新しいスレッドは常にエージェント未選択状態で作成
+    const newThread = threadManager.createThread(undefined, language);
     setActiveThreadId(newThread.id);
     setCurrentThread(newThread);
     setMessages([]);
     lastSavedMessageCount.current = 0;
+
+    // エージェントを未選択状態にして、ルートパスに遷移
+    setAgentId(null);
+    router.replace('/');
 
     console.log('New thread created:', {
       threadId: newThread.id,
       agentId: newThread.agentId,
       lastSavedMessageCount: lastSavedMessageCount.current
     });
-  }, [activeThreadId, messages, agentId]);
+  }, [activeThreadId, messages, router]);
 
   const handleThreadSelect = useCallback((threadId: string) => {
+    // 同じスレッドを再度選択した場合は何もしない
+    if (activeThreadId === threadId) {
+      console.log('Same thread selected, skipping:', threadId);
+      return;
+    }
+
+    // スレッド選択中フラグを設定
+    isSelectingThreadRef.current = true;
+
     // 現在のメッセージを保存（もしあれば）
-    if (activeThreadId && messages.length > 0) {
+    // messagesを直接参照せず、useChatのmessagesを取得するため、refを使用
+    const currentMessages = messages;
+    if (activeThreadId && currentMessages.length > 0) {
       const currentThread = threadManager.getActiveThread();
       if (currentThread) {
-        const newMessages = messages.slice(currentThread.messages.length);
+        const newMessages = currentMessages.slice(currentThread.messages.length);
         newMessages.forEach(message => {
           threadManager.addMessage(
             activeThreadId,
@@ -328,24 +429,7 @@ export default function Home() {
     if (threadManager.setActiveThread(threadId)) {
       const thread = threadManager.getActiveThread();
       if (thread) {
-        setActiveThreadId(threadId);
-        setCurrentThread(thread);
-
-        // スレッドのagentIdにエージェントを切り替える（URL同期のuseEffectに任せる）
-        if (thread.agentId && thread.agentId !== agentId) {
-          console.log('Switching agent to match thread:', {
-            threadAgentId: thread.agentId,
-            currentAgentId: agentId
-          });
-          const entry = agents.find(a => a.agentId === thread.agentId);
-          if (entry) {
-            setAgentId(thread.agentId);
-            saveAgentId(thread.agentId);
-            // URL同期のuseEffectが処理するため、ここではrouter.replaceを呼ばない
-          }
-        }
-
-        // スレッドのメッセージをuseChatに設定
+        // スレッドのメッセージを先に準備
         const threadMessages = thread.messages
           .filter(msg => msg.role === 'user' || msg.role === 'assistant') // user/assistantのみ
           .map((msg, index) => ({
@@ -364,12 +448,90 @@ export default function Home() {
           filteredMessages: thread.messages.filter(msg => msg.role === 'user' || msg.role === 'assistant')
         });
 
+        // メッセージを設定する前に、スレッド初期化フラグを設定して再実行を防ぐ
+        threadInitializedRef.current = true;
+        loadingThreadRef.current = threadId; // 読み込み中フラグを設定
+
+        // 状態を一括で更新（メッセージを先に設定）
+        // Reactのバッチ更新を確実にするため、同期的に実行
+        setActiveThreadId(threadId);
+        setCurrentThread(thread);
+        // メッセージを確実に設定（useEffectで上書きされないように）
         setMessages(threadMessages);
         lastSavedMessageCount.current = threadMessages.length;
+
+        // スレッドのagentIdにエージェントを切り替えて、URLパスに即座に遷移（エージェント選択の整合性を保つ）
+        // メッセージ設定後に実行することで、メッセージがクリアされるのを防ぐ
+        if (thread.agentId) {
+          // スレッドにagentIdがある場合、そのagentIdに対応するURLパスに遷移
+          const entry = agents.find(a => a.agentId === thread.agentId);
+          if (entry) {
+            // 現在のagentIdと異なる場合、または未選択状態の場合のみ更新
+            if (agentId !== thread.agentId) {
+              console.log('Switching agent to match thread:', {
+                threadAgentId: thread.agentId,
+                currentAgentId: agentId
+              });
+              setAgentId(thread.agentId);
+              saveAgentId(thread.agentId);
+              // スレッド選択時にURLパスに即座に遷移（メッセージ設定後に実行）
+              // メッセージが確実に設定された後にURLを変更するため、少し遅延させる
+              // requestAnimationFrameを2回使って、レンダリングサイクルを確実に待つ
+              requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                  router.replace(`/agent/${entry.index}`);
+                  // URL遷移後にフラグをリセット（さらに遅延させて、メッセージが確実に保持されるように）
+                  setTimeout(() => {
+                    loadingThreadRef.current = null;
+                    isSelectingThreadRef.current = false;
+                  }, 300);
+                });
+              });
+            } else {
+              // agentIdが同じ場合はフラグをリセット
+              setTimeout(() => {
+                loadingThreadRef.current = null;
+                isSelectingThreadRef.current = false;
+              }, 100);
+            }
+          } else {
+            setTimeout(() => {
+              loadingThreadRef.current = null;
+              isSelectingThreadRef.current = false;
+            }, 100);
+          }
+        } else {
+          // スレッドにagentIdがない場合はルートパスに遷移（エージェント未選択状態）
+          if (agentId !== null) {
+            setAgentId(null);
+            // メッセージ設定後に実行
+            // requestAnimationFrameを2回使って、レンダリングサイクルを確実に待つ
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                router.replace('/');
+                // URL遷移後にフラグをリセット（さらに遅延させて、メッセージが確実に保持されるように）
+                setTimeout(() => {
+                  loadingThreadRef.current = null;
+                  isSelectingThreadRef.current = false;
+                }, 300);
+              });
+            });
+          } else {
+            setTimeout(() => {
+              loadingThreadRef.current = null;
+              isSelectingThreadRef.current = false;
+            }, 100);
+          }
+        }
+
         console.log('Messages set:', threadMessages);
+      } else {
+        isSelectingThreadRef.current = false;
       }
+    } else {
+      isSelectingThreadRef.current = false;
     }
-  }, [activeThreadId, messages, agentId, agents]);
+  }, [activeThreadId, agentId, agents, router, messages]);
 
   const handleToggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
@@ -516,9 +678,9 @@ export default function Home() {
                   type="text"
                   value={input}
                   onChange={handleInputChange}
-                  placeholder={t(language, 'inputPlaceholder')}
+                  placeholder={agentId === null ? 'エージェントを選択してください' : t(language, 'inputPlaceholder')}
                   className="input-modern pr-12"
-                  disabled={isLoading}
+                  disabled={isLoading || agentId === null}
                 />
                 <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                   <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -529,7 +691,7 @@ export default function Home() {
               <div className="flex gap-3">
                 <button
                   type="submit"
-                  disabled={isLoading || !input.trim()}
+                  disabled={isLoading || !input.trim() || agentId === null}
                   className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                 >
                   {isLoading ? (

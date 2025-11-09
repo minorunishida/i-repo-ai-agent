@@ -27,12 +27,14 @@ export default function ThreadSidebar({
 
   useEffect(() => {
     // 初期化時にスレッドを読み込み
-    setThreads(threadManager.getThreads());
-    
-    // スレッド変更を監視するためのポーリング（実際の実装ではイベントベースにする）
-    const interval = setInterval(() => {
+    const updateThreads = () => {
       setThreads(threadManager.getThreads());
-    }, 1000);
+    };
+    updateThreads();
+
+    // スレッド変更を監視するためのポーリング（実際の実装ではイベントベースにする）
+    // タイトル更新を確実に反映するため、500ms間隔に短縮
+    const interval = setInterval(updateThreads, 500);
 
     return () => clearInterval(interval);
   }, []);
@@ -69,22 +71,22 @@ export default function ThreadSidebar({
       : language === 'zh-Hant' ? 'zh-TW'
       : language === 'th' ? 'th-TH'
       : 'ja-JP';
-    
+
     if (diffInHours < 24) {
-      return date.toLocaleTimeString(locale, { 
-        hour: '2-digit', 
-        minute: '2-digit' 
+      return date.toLocaleTimeString(locale, {
+        hour: '2-digit',
+        minute: '2-digit'
       });
     } else if (diffInHours < 168) { // 1週間以内
-      return date.toLocaleDateString(locale, { 
+      return date.toLocaleDateString(locale, {
         weekday: 'short',
-        hour: '2-digit', 
-        minute: '2-digit' 
+        hour: '2-digit',
+        minute: '2-digit'
       });
     } else {
-      return date.toLocaleDateString(locale, { 
-        month: 'short', 
-        day: 'numeric' 
+      return date.toLocaleDateString(locale, {
+        month: 'short',
+        day: 'numeric'
       });
     }
   };
@@ -132,7 +134,7 @@ export default function ThreadSidebar({
             </svg>
           </button>
         </div>
-        
+
         {/* 新規スレッドボタン */}
         <button
           onClick={onNewThread}
@@ -194,7 +196,7 @@ export default function ThreadSidebar({
                       </span>
                     </div>
                   </div>
-                  
+
                   {/* 削除ボタン */}
                   {activeThreadId !== thread.id && (
                     <button

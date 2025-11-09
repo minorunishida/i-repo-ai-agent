@@ -60,7 +60,7 @@ export default function AgentPicker({ language, value, onChange, disabled = fals
     };
   }, [language]);
 
-  const current = agents.find((a) => a.agentId === value) || agents[0];
+  const current = value ? agents.find((a) => a.agentId === value) : null;
 
   return (
     <div className="relative" ref={menuRef}>
@@ -73,7 +73,7 @@ export default function AgentPicker({ language, value, onChange, disabled = fals
         title={disabled ? "Agent cannot be changed during conversation" : "Select agent"}
         disabled={loading || !!error || disabled}
       >
-        <span>{current ? current.name : 'Agent'}</span>
+        <span>{current ? current.name : (value === null ? 'エージェントを選択' : 'Agent')}</span>
         <svg className="w-4 h-4 opacity-70" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
           <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" />
         </svg>

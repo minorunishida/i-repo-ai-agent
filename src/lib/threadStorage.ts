@@ -1,3 +1,5 @@
+import { AppLanguage, t } from './i18n';
+
 export interface ThreadMessage {
   id: string;
   role: 'user' | 'assistant' | 'function' | 'system' | 'data' | 'tool';
@@ -85,14 +87,14 @@ export class ThreadManager {
     return `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
-  private createPreview(messages: ThreadMessage[]): string {
+  private createPreview(messages: ThreadMessage[], language: AppLanguage = 'ja'): string {
     const firstUserMessage = messages.find(m => m.role === 'user');
     if (firstUserMessage) {
       return firstUserMessage.content.length > 50
         ? firstUserMessage.content.substring(0, 50) + '...'
         : firstUserMessage.content;
     }
-    return '新しい会話';
+    return t(language, 'newConversation');
   }
 
   private enforceMaxThreads(): void {
@@ -103,19 +105,20 @@ export class ThreadManager {
     }
   }
 
-  public createThread(agentId?: string): Thread {
+  public createThread(agentId?: string, language: AppLanguage = 'ja'): Thread {
     const threadId = this.generateThreadId();
     const now = Date.now();
+    const defaultTitle = t(language, 'newConversation');
 
     const newThread: Thread = {
       id: threadId,
       azureThreadId: undefined, // 最初は未設定、Azure作成後に設定される
       agentId: agentId, // このスレッドで使用されたエージェントID
-      title: '新しい会話',
+      title: defaultTitle,
       messages: [],
       createdAt: now,
       updatedAt: now,
-      preview: '新しい会話',
+      preview: defaultTitle,
     };
 
     this.threads.push(newThread);
@@ -196,11 +199,21 @@ export class ThreadManager {
 
     thread.messages.push(message);
     thread.updatedAt = Date.now();
-    thread.preview = this.createPreview(thread.messages);
 
-    // タイトルを自動更新（最初のユーザーメッセージの場合）
-    if (message.role === 'user' && thread.messages.filter(m => m.role === 'user').length === 1) {
-      thread.title = this.generateThreadTitle(thread.messages);
+    // 言語を取得（デフォルトは日本語）
+    const language: AppLanguage = (typeof window !== 'undefined' && window.localStorage.getItem('app_language') as AppLanguage) || 'ja';
+    thread.preview = this.createPreview(thread.messages, language);
+
+    // タイトルを自動更新（最初のユーザーメッセージの場合、またはタイトルがデフォルトの場合）
+    if (message.role === 'user') {
+      const userMessageCount = thread.messages.filter(m => m.role === 'user').length;
+      const defaultTitle = t(language, 'newConversation');
+      if (userMessageCount === 1 || thread.title === defaultTitle || this.isDefaultTitle(thread.title)) {
+        const newTitle = this.generateThreadTitle(thread.messages, language);
+        if (newTitle !== thread.title) {
+          thread.title = newTitle;
+        }
+      }
     }
 
     console.log(`Message added to thread ${threadId}:`, {
@@ -248,7 +261,19 @@ export class ThreadManager {
     return true;
   }
 
-  public generateThreadTitle(messages: ThreadMessage[]): string {
+  private isDefaultTitle(title: string): boolean {
+    // 各言語の「新しい会話」と比較
+    const defaultTitles = [
+      t('ja', 'newConversation'),
+      t('en', 'newConversation'),
+      t('zh-Hans', 'newConversation'),
+      t('zh-Hant', 'newConversation'),
+      t('th', 'newConversation'),
+    ];
+    return defaultTitles.includes(title);
+  }
+
+  public generateThreadTitle(messages: ThreadMessage[], language: AppLanguage = 'ja'): string {
     const firstUserMessage = messages.find(m => m.role === 'user');
     if (firstUserMessage) {
       const content = firstUserMessage.content.trim();
@@ -259,20 +284,46 @@ export class ThreadManager {
         return content.substring(0, 47) + '...';
       }
     }
-    return '新しい会話';
+    return t(language, 'newConversation');
   }
 
-  public autoUpdateThreadTitle(threadId: string): boolean {
+  public autoUpdateThreadTitle(threadId: string, language: AppLanguage = 'ja'): boolean {
     const thread = this.threads.find(t => t.id === threadId);
-    if (!thread || thread.messages.length === 0) return false;
+    if (!thread || thread.messages.length === 0) {
+      console.log('autoUpdateThreadTitle: Thread not found or no messages', {
+        threadId,
+        threadExists: !!thread,
+        messageCount: thread?.messages.length || 0
+      });
+      return false;
+    }
 
-    const newTitle = this.generateThreadTitle(thread.messages);
-    if (newTitle !== thread.title) {
+    const newTitle = this.generateThreadTitle(thread.messages, language);
+    console.log('autoUpdateThreadTitle: Checking title update', {
+      threadId,
+      currentTitle: thread.title,
+      newTitle,
+      messageCount: thread.messages.length,
+      firstUserMessage: thread.messages.find(m => m.role === 'user')?.content.substring(0, 30)
+    });
+
+    // タイトルがデフォルトタイトルの場合、または新しいタイトルが異なる場合は更新
+    if (this.isDefaultTitle(thread.title) || newTitle !== thread.title) {
+      const oldTitle = thread.title;
       thread.title = newTitle;
       thread.updatedAt = Date.now();
       this.saveToStorage();
+      console.log('autoUpdateThreadTitle: Title updated', {
+        threadId,
+        oldTitle,
+        newTitle
+      });
       return true;
     }
+    console.log('autoUpdateThreadTitle: Title unchanged', {
+      threadId,
+      title: thread.title
+    });
     return false;
   }
 
