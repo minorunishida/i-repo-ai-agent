@@ -260,26 +260,6 @@ export async function POST(req: Request) {
       } else {
         console.log('Message added to thread successfully');
 
-        // 言語リマインドを必要に応じて追加
-        if (langHint) {
-          try {
-            await fetch(addMessageUrl, {
-              method: 'POST',
-              headers: {
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                role: 'user',
-                content: [{ type: 'text', text: langHint }],
-              }),
-            });
-            console.log('Language hint appended to existing thread');
-          } catch (e) {
-            console.warn('Failed to append language hint:', e);
-          }
-        }
-
         // Runを開始（メッセージ追加が成功した場合のみ）
         url = `${PROJECT_ENDPOINT}/threads/${effectiveThreadId}/runs?api-version=v1`;
         requestBody = {

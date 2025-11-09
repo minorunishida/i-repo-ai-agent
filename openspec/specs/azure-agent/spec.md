@@ -60,7 +60,8 @@ Azure AI Foundry Agent ServiceとVercel AI SDKを統合し、リアルタイム�
 
 #### Scenario: Existing thread language instruction
 - **WHEN** 既存スレッドでRunを開始する
-- **THEN** サーバはRun前に言語リマインドのメッセージを追加する
+- **THEN** サーバは言語リマインドのメッセージを追加しない
+- **AND** 新規スレッド作成時に既に設定された言語指示が継続して適用される
 
 ### Requirement: Thread-Based Context Continuity
 システムはthreadIdを使用して会話コンテキストを維持し、エージェント切り替えやページリロード後も継続しなければならない（SHALL）。システムはAzure Agent Serviceから返されたスレッドIDを使用し、ローカルで生成したスレッドIDではなくAzure側のスレッドIDを保持しなければならない。
