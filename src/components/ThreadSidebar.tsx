@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { threadManager, Thread } from '@/lib/threadStorage';
 import { AppLanguage, t } from '@/lib/i18n';
+import { Thread, threadManager } from '@/lib/threadStorage';
+import { useEffect, useState } from 'react';
 
 interface ThreadSidebarProps {
   activeThreadId: string | null;
@@ -12,6 +12,8 @@ interface ThreadSidebarProps {
   onToggleCollapse: () => void;
   language?: AppLanguage;
 }
+
+type Agent = { agentId: string; name: string; index: number };
 
 export default function ThreadSidebar({
   activeThreadId,
@@ -24,6 +26,24 @@ export default function ThreadSidebar({
   const [threads, setThreads] = useState<Thread[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [agents, setAgents] = useState<Agent[]>([]);
+
+  // エージェント情報を取得
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/admin/agents?lang=${language}`, { cache: 'no-store' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = (await res.json()) as { agents: Agent[] };
+        if (!cancelled) setAgents(data.agents || []);
+      } catch (e) {
+        // エラー時は agents 空のまま（フォールバック処理で通常のタイトルを表示）
+        console.error('Failed to fetch agents:', e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [language]);
 
   useEffect(() => {
     // 初期化時にスレッドを読み込み
@@ -59,6 +79,20 @@ export default function ThreadSidebar({
       }
     }
     setShowDeleteConfirm(null);
+  };
+
+  // スレッドのプレビュー（エージェント名）を取得
+  const getDisplayPreview = (thread: Thread): string => {
+    // エージェント名を表示
+    if (thread.agentId && agents.length > 0) {
+      const agent = agents.find(a => a.agentId === thread.agentId);
+      if (agent) {
+        return agent.name;
+      }
+    }
+
+    // フォールバック: エージェント情報が取得できない場合や、agentIdが設定されていない場合は通常のプレビューを返す
+    return thread.preview;
   };
 
   const formatDate = (timestamp: number) => {
@@ -185,7 +219,7 @@ export default function ThreadSidebar({
                       {thread.title}
                     </h3>
                     <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
-                      {thread.preview}
+                      {getDisplayPreview(thread)}
                     </p>
                     <div className="flex items-center gap-2 mt-2">
                       <span className="text-xs text-gray-500 dark:text-gray-500">
