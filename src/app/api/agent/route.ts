@@ -1,9 +1,9 @@
 // app/api/agent/route.ts
-import { ConfidentialClientApplication } from '@azure/msal-node';
-import { appendFile } from 'node:fs/promises';
-import { formatStreamPart } from 'ai';
 import { parseAgentName } from '@/lib/agentUtils';
 import { AppLanguage } from '@/lib/i18n';
+import { ConfidentialClientApplication } from '@azure/msal-node';
+import { formatStreamPart } from 'ai';
+import { appendFile } from 'node:fs/promises';
 
 export const runtime = 'nodejs';   // SSE プロキシは Node 実行を推奨
 export const maxDuration = 60;
@@ -127,7 +127,8 @@ export async function POST(req: Request) {
 
     const { messages, preferredLanguage } = body;
     const requestedAgentId: string | undefined = body.agentId;
-    let { threadId } = body;
+    let { threadId } = body; // ローカルのスレッドID
+    const { azureThreadId: clientAzureThreadId } = body; // クライアントが保持しているAzureスレッドID
 
     // 環境変数から複数Agentを自動検出
     type AgentEntry = { agentId: string; name: string; assistantId: string; index: number };
@@ -210,13 +211,17 @@ export async function POST(req: Request) {
     console.log('Access token obtained successfully');
 
     // Azure Agent Serviceからストリーミングレスポンスを取得
-    let url: string;
+    let url: string | undefined;
     let requestBody: any;
 
-    if (threadId) {
-      console.log('Using existing thread:', threadId);
+    // AzureスレッドIDが存在する場合のみ、既存スレッドとして扱う
+    // ローカルIDのみの場合は新規スレッドを作成
+    const effectiveThreadId = clientAzureThreadId;
+
+    if (effectiveThreadId) {
+      console.log('Using existing thread:', { localThreadId: threadId, azureThreadId: clientAzureThreadId, effective: effectiveThreadId });
       // 既存スレッドにメッセージを追加してRunを開始
-      const addMessageUrl = `${PROJECT_ENDPOINT}/threads/${threadId}/messages?api-version=v1`;
+      const addMessageUrl = `${PROJECT_ENDPOINT}/threads/${effectiveThreadId}/messages?api-version=v1`;
       const addMessageBody = {
         role: 'user',
         content: [{ type: 'text', text: messages[messages.length - 1]?.content || '' }],
@@ -247,39 +252,53 @@ export async function POST(req: Request) {
 
         // スレッドが存在しない場合は、新規スレッドを作成
         if (addMessageRes.status === 404) {
-          console.log('Thread not found, creating new thread instead');
-          threadId = null; // 新規スレッド作成にフォールバック
+          console.log('Thread not found on Azure, creating new thread instead');
+          // urlとrequestBodyを未設定のままにして、後続の`if (!url)`ブロックで新規作成
         } else {
           throw new Error(`Failed to add message to thread: ${addMessageRes.status} - ${errorText}`);
         }
       } else {
         console.log('Message added to thread successfully');
-      }
 
-      // 言語リマインドを必要に応じて追加
-      if (langHint) {
-        try {
-          await fetch(addMessageUrl, {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              role: 'user',
-              content: [{ type: 'text', text: langHint }],
-            }),
-          });
-          console.log('Language hint appended to existing thread');
-        } catch (e) {
-          console.warn('Failed to append language hint:', e);
+        // 言語リマインドを必要に応じて追加
+        if (langHint) {
+          try {
+            await fetch(addMessageUrl, {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                role: 'user',
+                content: [{ type: 'text', text: langHint }],
+              }),
+            });
+            console.log('Language hint appended to existing thread');
+          } catch (e) {
+            console.warn('Failed to append language hint:', e);
+          }
         }
+
+        // Runを開始（メッセージ追加が成功した場合のみ）
+        url = `${PROJECT_ENDPOINT}/threads/${effectiveThreadId}/runs?api-version=v1`;
+        requestBody = {
+          assistant_id: active.assistantId,
+          stream: true,
+        };
       }
     }
 
-    if (!threadId) {
-      console.log('Creating new thread');
+    if (!url) {
+      console.log('Creating new thread with latest user message only');
       // 新規スレッドを作成してRunを開始
+      // 最後のユーザーメッセージのみを送信（過去のメッセージはローカルストレージにのみ保存）
+      const lastUserMessage = messages.length > 0 ? messages[messages.length - 1] : null;
+
+      if (!lastUserMessage || lastUserMessage.role !== 'user') {
+        throw new Error('No user message found to create thread');
+      }
+
       url = `${PROJECT_ENDPOINT}/threads/runs?api-version=v1`;
       requestBody = {
         assistant_id: active.assistantId,
@@ -289,19 +308,12 @@ export async function POST(req: Request) {
             ...(langHint
               ? [{ role: 'user', content: [{ type: 'text', text: langHint }] }]
               : []),
-            ...messages.map((m: any) => ({
-              role: m.role === 'user' ? 'user' : 'assistant',
-              content: [{ type: 'text', text: m.content }],
-            })),
+            {
+              role: 'user',
+              content: [{ type: 'text', text: lastUserMessage.content }],
+            },
           ],
         },
-      };
-    } else {
-      // Runを開始
-      url = `${PROJECT_ENDPOINT}/threads/${threadId}/runs?api-version=v1`;
-      requestBody = {
-        assistant_id: active.assistantId,
-        stream: true,
       };
     }
 
@@ -342,6 +354,7 @@ export async function POST(req: Request) {
     // Azure SSEをAI SDKのストリーム形式に変換
     const encoder = new TextEncoder();
     let azureThreadId: string | null = null;
+    let azureThreadIdSent = false; // 1回のみ送信するためのフラグ
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -349,7 +362,9 @@ export async function POST(req: Request) {
           await pumpSse(res.body!, ({ event, data }) => {
             if (data === '[DONE]') {
               // スレッドIDをログに出力（デバッグ用）
-              if (azureThreadId && !threadId) console.log('Azure thread ID created:', azureThreadId);
+              if (azureThreadId && !clientAzureThreadId) {
+                console.log('Azure thread ID created:', azureThreadId);
+              }
               controller.enqueue(encoder.encode(formatStreamPart('finish_message', { finishReason: 'stop' })));
               controller.close();
               return;
@@ -361,10 +376,16 @@ export async function POST(req: Request) {
               const obj = JSON.parse(data);
               const ev = event ?? obj?.type ?? obj?.event ?? '';
 
-              // スレッドIDを取得（新規作成の場合）
-              if (!threadId && (obj?.thread_id || obj?.data?.thread_id)) {
+              // スレッドIDを取得（新規作成の場合、1回のみ送信）
+              if (!clientAzureThreadId && !azureThreadIdSent && (obj?.thread_id || obj?.data?.thread_id)) {
                 azureThreadId = obj?.thread_id || obj?.data?.thread_id;
                 console.log('Azure thread ID received:', azureThreadId);
+                // AzureスレッドIDをクライアントに送信（1回のみ）
+                controller.enqueue(encoder.encode(formatStreamPart('data', [{
+                  type: 'azure-thread-id',
+                  threadId: azureThreadId
+                }])));
+                azureThreadIdSent = true; // 送信済みフラグを立てる
               }
 
               if (typeof ev === 'string' && ev.includes('message.delta')) {
@@ -391,7 +412,7 @@ export async function POST(req: Request) {
               // 完了イベントが明示で来る場合
               if (typeof ev === 'string' && ev.includes('message.completed')) {
                 // スレッドIDをログに出力（デバッグ用）
-                if (azureThreadId && !threadId) {
+                if (azureThreadId && !clientAzureThreadId) {
                   console.log('Azure thread ID created:', azureThreadId);
                 }
                 controller.enqueue(encoder.encode(formatStreamPart('finish_message', { finishReason: 'stop' })));
