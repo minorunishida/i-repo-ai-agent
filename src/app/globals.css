@@ -104,6 +104,40 @@
   .loading-dots > div:nth-child(3) {
     animation-delay: 0.3s;
   }
+
+  /* Chat link styling */
+  .message-assistant .chat-link,
+  .chat-link {
+    color: #FF9500 !important; /* honest-500 */
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 2px;
+    transition: all 0.2s;
+  }
+
+  .message-assistant .chat-link:hover,
+  .chat-link:hover {
+    color: #E6850A !important; /* honest-600 */
+    text-decoration-color: #E6850A;
+  }
+
+  .dark .message-assistant .chat-link,
+  .dark .chat-link {
+    color: #fb923c !important; /* honest-400 */
+  }
+
+  .dark .message-assistant .chat-link:hover,
+  .dark .chat-link:hover {
+    color: #fdba74 !important; /* honest-300 */
+    text-decoration-color: #fdba74;
+  }
+
+  .message-assistant .chat-link:focus,
+  .chat-link:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px #FF9500;
+    border-radius: 0.25rem;
+  }
 }
 
 /* Smooth scrolling */

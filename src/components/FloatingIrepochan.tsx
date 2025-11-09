@@ -30,10 +30,10 @@ export default function FloatingIrepochan({ isResponding, className = '' }: Floa
     };
 
     updatePosition();
-    
+
     // 定期的に位置を更新（より自然な動きのため）
     const interval = setInterval(updatePosition, 8000);
-    
+
     return () => clearInterval(interval);
   }, []);
 
@@ -50,36 +50,36 @@ export default function FloatingIrepochan({ isResponding, className = '' }: Floa
     >
       <div
         className={`relative transition-all duration-500 ${
-          isResponding 
-            ? 'animate-float-active' 
+          isResponding
+            ? 'animate-float-active'
             : 'animate-float'
         }`}
       >
         {/* 影効果 */}
-        <div 
+        <div
           className="absolute inset-0 bg-honest-500/20 rounded-full blur-md"
           style={{
             transform: 'translateY(10px) scale(1.1)',
           }}
         />
-        
+
         {/* アイレポちゃん画像 */}
-        <div className="relative">
+        <div className="relative w-20 h-20">
           <Image
             src="/images/img_irepochan_02.webp"
             alt="アイレポちゃん"
             width={80}
             height={80}
-            className="drop-shadow-lg"
+            className="drop-shadow-lg w-full h-full object-contain"
             priority
           />
-          
+
           {/* 回答中の光る効果 */}
           {isResponding && (
             <div className="absolute inset-0 bg-honest-400/30 rounded-full animate-pulse" />
           )}
         </div>
-        
+
         {/* 思考バブル（回答中のみ） */}
         {isResponding && (
           <div className="absolute -top-12 -left-8 bg-white dark:bg-gray-800 rounded-full px-3 py-1 shadow-lg border border-honest-200 dark:border-honest-700">

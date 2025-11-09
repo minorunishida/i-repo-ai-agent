@@ -7,6 +7,7 @@ import ResourceLinks from '@/components/ResourceLinks';
 import ThreadSidebar from '@/components/ThreadSidebar';
 import { AppLanguage, getSavedLanguage, saveLanguage, t } from '@/lib/i18n';
 import { Thread, threadManager } from '@/lib/threadStorage';
+import { parseUrlsToElements } from '@/lib/urlUtils';
 import { useChat } from 'ai/react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -150,7 +151,7 @@ export default function Home() {
     if (!agents || agents.length === 0) return;
     // 既に初期化済みの場合はスキップ
     if (threadInitializedRef.current) return;
-    
+
     let activeThread = threadManager.getActiveThread();
 
     // アクティブなスレッドがない場合のみ自動的に作成
@@ -474,7 +475,7 @@ export default function Home() {
                 >
                   <div className={`max-w-[85%] sm:max-w-[70%] ${message.role === 'user' ? 'message-user' : 'message-assistant'}`}>
                     <div className="whitespace-pre-wrap text-sm sm:text-base leading-relaxed">
-                      {message.content}
+                      {message.role === 'assistant' ? parseUrlsToElements(message.content) : message.content}
                     </div>
                   </div>
                 </div>
